@@ -162,6 +162,212 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
+        .fifa-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fifa-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fifa-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .fifa-overall {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .fifa-position {
+            font-size: 14px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .fifa-content {
+            display: flex;
+            gap: 15px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .fifa-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #ffd700;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .fifa-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #ffd700;
+            border: 3px solid #ffd700;
+        }
+
+        .fifa-stats {
+            flex: 1;
+        }
+
+        .fifa-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .fifa-stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .fifa-stat-name {
+            color: #ccc;
+        }
+
+        .fifa-stat-value {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .view-toggle button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .player-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .edit-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .availability-btn {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .availability-btn.unavailable {
+            background: #6c757d;
+            color: white;
+        }
+
+        .player-unavailable {
+            opacity: 0.6;
+            filter: grayscale(50%);
+        }
+
+        .fifa-card.player-unavailable {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .edit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .edit-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .edit-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
         .player-name {
             font-size: 18px;
             font-weight: bold;
@@ -317,6 +523,14 @@
                     <input type="text" id="playerName" required>
                 </div>
 
+                <div class="form-group">
+                    <label for="playerImage">Player Photo (optional)</label>
+                    <input type="file" id="playerImage" accept="image/*" capture="environment">
+                    <div id="imagePreview" style="margin-top: 10px; display: none;">
+                        <img id="previewImg" style="max-width: 150px; max-height: 150px; border-radius: 8px; object-fit: cover;">
+                    </div>
+                </div>
+
                 <div class="rating-group">
                     <label for="riflessi">Riflessi</label>
                     <input type="number" id="riflessi" min="1" max="100" value="50" required>
@@ -347,6 +561,10 @@
         </div>
 
         <div id="players" class="tab-content">
+            <div class="view-toggle">
+                <button id="listViewBtn" class="active" onclick="toggleView('list')">List View</button>
+                <button id="cardViewBtn" onclick="toggleView('card')">FIFA Cards</button>
+            </div>
             <div id="playersList"></div>
         </div>
 
@@ -369,8 +587,240 @@
         </div>
     </div>
 
+    <!-- Edit Player Modal -->
+    <div id="editModal" class="edit-modal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h3>Edit Player</h3>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editPlayerForm">
+                <div class="form-group">
+                    <label for="editPlayerName">Player Name</label>
+                    <input type="text" id="editPlayerName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editPlayerImage">Player Photo (optional)</label>
+                    <input type="file" id="editPlayerImage" accept="image/*" capture="environment">
+                    <div id="editImagePreview" style="margin-top: 10px; display: none;">
+                        <img id="editPreviewImg" style="max-width: 150px; max-height: 150px; border-radius: 8px; object-fit: cover;">
+                    </div>
+                </div>
+
+                <div class="rating-group">
+                    <label for="editRiflessi">Riflessi</label>
+                    <input type="number" id="editRiflessi" min="1" max="100" required>
+                </div>
+
+                <div class="rating-group">
+                    <label for="editPalleggio">Palleggio</label>
+                    <input type="number" id="editPalleggio" min="1" max="100" required>
+                </div>
+
+                <div class="rating-group">
+                    <label for="editBacher">Bacher</label>
+                    <input type="number" id="editBacher" min="1" max="100" required>
+                </div>
+
+                <div class="rating-group">
+                    <label for="editSchiacciata">Schiacciata</label>
+                    <input type="number" id="editSchiacciata" min="1" max="100" required>
+                </div>
+
+                <div class="rating-group">
+                    <label for="editQi">QI</label>
+                    <input type="number" id="editQi" min="1" max="100" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Player</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let players = JSON.parse(localStorage.getItem('players')) || [];
+        let opfsRoot = null;
+
+        // Initialize OPFS
+        async function initOPFS() {
+            try {
+                opfsRoot = await navigator.storage.getDirectory();
+                console.log('OPFS initialized successfully');
+            } catch (error) {
+                console.error('OPFS not supported or failed to initialize:', error);
+            }
+        }
+
+        // Save image to OPFS
+        async function saveImageToOPFS(playerId, file) {
+            if (!opfsRoot) return null;
+            
+            try {
+                const fileName = `player-${playerId}.jpg`;
+                const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                return fileName;
+            } catch (error) {
+                console.error('Failed to save image:', error);
+                return null;
+            }
+        }
+
+        // Load image from OPFS
+        async function loadImageFromOPFS(fileName) {
+            if (!opfsRoot || !fileName) return null;
+            
+            try {
+                const fileHandle = await opfsRoot.getFileHandle(fileName);
+                const file = await fileHandle.getFile();
+                return URL.createObjectURL(file);
+            } catch (error) {
+                console.error('Failed to load image:', error);
+                return null;
+            }
+        }
+
+        // Delete image from OPFS
+        async function deleteImageFromOPFS(fileName) {
+            if (!opfsRoot || !fileName) return;
+            
+            try {
+                await opfsRoot.removeEntry(fileName);
+            } catch (error) {
+                console.error('Failed to delete image:', error);
+            }
+        }
+
+        // Image preview functionality
+        document.getElementById('playerImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+
+        // Initialize OPFS when page loads
+        initOPFS();
+
+        // Edit modal functionality
+        let editingPlayerId = null;
+
+        document.getElementById('editPlayerImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('editImagePreview');
+            const previewImg = document.getElementById('editPreviewImg');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+
+        async function editPlayer(playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+            
+            editingPlayerId = playerId;
+            
+            // Fill the form with current values
+            document.getElementById('editPlayerName').value = player.name;
+            document.getElementById('editRiflessi').value = player.riflessi;
+            document.getElementById('editPalleggio').value = player.palleggio;
+            document.getElementById('editBacher').value = player.bacher;
+            document.getElementById('editSchiacciata').value = player.schiacciata;
+            document.getElementById('editQi').value = player.qi;
+            
+            // Show current image if exists
+            if (player.hasImage && player.imageFileName) {
+                const imageUrl = await loadImageFromOPFS(player.imageFileName);
+                if (imageUrl) {
+                    document.getElementById('editPreviewImg').src = imageUrl;
+                    document.getElementById('editImagePreview').style.display = 'block';
+                }
+            }
+            
+            // Show modal
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editPlayerForm').reset();
+            document.getElementById('editImagePreview').style.display = 'none';
+            editingPlayerId = null;
+        }
+
+        document.getElementById('editPlayerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!editingPlayerId) return;
+            
+            const playerIndex = players.findIndex(p => p.id === editingPlayerId);
+            if (playerIndex === -1) return;
+            
+            const imageFile = document.getElementById('editPlayerImage').files[0];
+            const player = players[playerIndex];
+            
+            // Update player data
+            player.name = document.getElementById('editPlayerName').value;
+            player.riflessi = parseInt(document.getElementById('editRiflessi').value);
+            player.palleggio = parseInt(document.getElementById('editPalleggio').value);
+            player.bacher = parseInt(document.getElementById('editBacher').value);
+            player.schiacciata = parseInt(document.getElementById('editSchiacciata').value);
+            player.qi = parseInt(document.getElementById('editQi').value);
+            player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
+            
+            // Handle image update
+            if (imageFile) {
+                // Delete old image if exists
+                if (player.hasImage && player.imageFileName) {
+                    await deleteImageFromOPFS(player.imageFileName);
+                }
+                
+                // Save new image
+                const fileName = await saveImageToOPFS(editingPlayerId, imageFile);
+                if (fileName) {
+                    player.hasImage = true;
+                    player.imageFileName = fileName;
+                }
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('players', JSON.stringify(players));
+            
+            closeEditModal();
+            displayPlayers();
+            alert('Player updated successfully!');
+        });
+
+        function toggleAvailability(playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                player.available = !player.available;
+                localStorage.setItem('players', JSON.stringify(players));
+                displayPlayers();
+            }
+        }
 
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -389,30 +839,55 @@
         }
 
 
-        document.getElementById('playerForm').addEventListener('submit', function(e) {
+        document.getElementById('playerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            const playerId = Date.now();
+            const imageFile = document.getElementById('playerImage').files[0];
+            
             const player = {
-                id: Date.now(),
+                id: playerId,
                 name: document.getElementById('playerName').value,
                 riflessi: parseInt(document.getElementById('riflessi').value),
                 palleggio: parseInt(document.getElementById('palleggio').value),
                 bacher: parseInt(document.getElementById('bacher').value),
                 schiacciata: parseInt(document.getElementById('schiacciata').value),
-                qi: parseInt(document.getElementById('qi').value)
+                qi: parseInt(document.getElementById('qi').value),
+                hasImage: false,
+                imageFileName: null,
+                available: true
             };
             
             player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
+            
+            // Save image to OPFS if provided
+            if (imageFile) {
+                const fileName = await saveImageToOPFS(playerId, imageFile);
+                if (fileName) {
+                    player.hasImage = true;
+                    player.imageFileName = fileName;
+                }
+            }
             
             players.push(player);
             localStorage.setItem('players', JSON.stringify(players));
             
             this.reset();
+            document.getElementById('imagePreview').style.display = 'none';
             
             alert('Player added successfully!');
         });
 
-        function displayPlayers() {
+        let currentView = 'list';
+
+        function toggleView(view) {
+            currentView = view;
+            document.getElementById('listViewBtn').classList.toggle('active', view === 'list');
+            document.getElementById('cardViewBtn').classList.toggle('active', view === 'card');
+            displayPlayers();
+        }
+
+        async function displayPlayers() {
             const playersList = document.getElementById('playersList');
             playersList.innerHTML = '';
             
@@ -421,42 +896,120 @@
                 return;
             }
             
-            players.forEach(player => {
+            for (const player of players) {
                 const playerCard = document.createElement('div');
-                playerCard.className = 'player-card';
-                playerCard.innerHTML = `
-                    <button class="delete-btn" onclick="deletePlayer(${player.id})">Delete</button>
-                    <div class="player-name">${player.name}</div>
-                    <div class="player-stats">
-                        <div class="stat">
-                            <div class="stat-label">Riflessi</div>
-                            <div class="stat-value">${player.riflessi}</div>
+                
+                // Add unavailable class if player is not available
+                const unavailableClass = player.available === false ? ' player-unavailable' : '';
+                
+                if (currentView === 'card') {
+                    // FIFA Card View
+                    playerCard.className = 'fifa-card' + unavailableClass;
+                    
+                    let imageHtml = '';
+                    if (player.hasImage && player.imageFileName) {
+                        try {
+                            const imageUrl = await loadImageFromOPFS(player.imageFileName);
+                            if (imageUrl) {
+                                imageHtml = `<img src="${imageUrl}" class="fifa-image" alt="${player.name}">`;
+                            } else {
+                                imageHtml = `<div class="fifa-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
+                            }
+                        } catch (error) {
+                            imageHtml = `<div class="fifa-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
+                        }
+                    } else {
+                        imageHtml = `<div class="fifa-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
+                    }
+                    
+                    playerCard.innerHTML = `
+                        <div class="fifa-card-header">
+                            <div class="fifa-overall">${Math.round(player.average)}</div>
+                            <div class="fifa-position">${player.available === false ? 'OUT' : 'ALL'}</div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">Palleggio</div>
-                            <div class="stat-value">${player.palleggio}</div>
+                        <div class="fifa-content">
+                            ${imageHtml}
+                            <div class="fifa-stats">
+                                <div class="fifa-name">${player.name}</div>
+                                <div class="fifa-stat">
+                                    <span class="fifa-stat-name">RIF</span>
+                                    <span class="fifa-stat-value">${player.riflessi}</span>
+                                </div>
+                                <div class="fifa-stat">
+                                    <span class="fifa-stat-name">PAL</span>
+                                    <span class="fifa-stat-value">${player.palleggio}</span>
+                                </div>
+                                <div class="fifa-stat">
+                                    <span class="fifa-stat-name">BAC</span>
+                                    <span class="fifa-stat-value">${player.bacher}</span>
+                                </div>
+                                <div class="fifa-stat">
+                                    <span class="fifa-stat-name">SCH</span>
+                                    <span class="fifa-stat-value">${player.schiacciata}</span>
+                                </div>
+                                <div class="fifa-stat">
+                                    <span class="fifa-stat-name">QI</span>
+                                    <span class="fifa-stat-value">${player.qi}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">Bacher</div>
-                            <div class="stat-value">${player.bacher}</div>
+                        <div class="player-actions" style="position: absolute; bottom: 10px; right: 10px; z-index: 2;">
+                            <button class="edit-btn" onclick="editPlayer(${player.id})">Edit</button>
+                            <button class="availability-btn ${player.available === false ? 'unavailable' : ''}" onclick="toggleAvailability(${player.id})">
+                                ${player.available === false ? 'Unavailable' : 'Available'}
+                            </button>
+                            <button class="delete-btn" onclick="deletePlayer(${player.id})">Delete</button>
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">Schiacciata</div>
-                            <div class="stat-value">${player.schiacciata}</div>
+                    `;
+                } else {
+                    // List View
+                    playerCard.className = 'player-card' + unavailableClass;
+                    playerCard.innerHTML = `
+                        <div class="player-name">${player.name} ${player.available === false ? '(Unavailable)' : ''}</div>
+                        <div class="player-stats">
+                            <div class="stat">
+                                <div class="stat-label">Riflessi</div>
+                                <div class="stat-value">${player.riflessi}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Palleggio</div>
+                                <div class="stat-value">${player.palleggio}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Bacher</div>
+                                <div class="stat-value">${player.bacher}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Schiacciata</div>
+                                <div class="stat-value">${player.schiacciata}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">QI</div>
+                                <div class="stat-value">${player.qi}</div>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">QI</div>
-                            <div class="stat-value">${player.qi}</div>
+                        <div class="player-average">Average: ${player.average}</div>
+                        <div class="player-actions">
+                            <button class="edit-btn" onclick="editPlayer(${player.id})">Edit</button>
+                            <button class="availability-btn ${player.available === false ? 'unavailable' : ''}" onclick="toggleAvailability(${player.id})">
+                                ${player.available === false ? 'Unavailable' : 'Available'}
+                            </button>
+                            <button class="delete-btn" onclick="deletePlayer(${player.id})">Delete</button>
                         </div>
-                    </div>
-                    <div class="player-average">Average: ${player.average}</div>
-                `;
+                    `;
+                }
+                
                 playersList.appendChild(playerCard);
-            });
+            }
         }
 
-        function deletePlayer(playerId) {
+        async function deletePlayer(playerId) {
             if (confirm('Are you sure you want to delete this player?')) {
+                const player = players.find(p => p.id === playerId);
+                if (player && player.hasImage && player.imageFileName) {
+                    await deleteImageFromOPFS(player.imageFileName);
+                }
+                
                 players = players.filter(player => player.id !== playerId);
                 localStorage.setItem('players', JSON.stringify(players));
                 displayPlayers();
@@ -466,13 +1019,16 @@
         function generateTeams() {
             const numTeams = parseInt(document.getElementById('numTeams').value);
             
-            if (players.length < numTeams) {
-                alert(`Need at least ${numTeams} players to generate ${numTeams} teams!`);
+            // Filter only available players
+            const availablePlayers = players.filter(player => player.available !== false);
+            
+            if (availablePlayers.length < numTeams) {
+                alert(`Need at least ${numTeams} available players to generate ${numTeams} teams! Currently have ${availablePlayers.length} available players.`);
                 return;
             }
             
-            // Sort players by average rating (highest to lowest)
-            const sortedPlayers = [...players].sort((a, b) => parseFloat(b.average) - parseFloat(a.average));
+            // Sort available players by average rating (highest to lowest)
+            const sortedPlayers = [...availablePlayers].sort((a, b) => parseFloat(b.average) - parseFloat(a.average));
             
             // Initialize teams
             const teams = Array.from({length: numTeams}, () => []);
