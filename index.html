@@ -198,8 +198,61 @@
             transform: scale(1.1);
         }
 
+        /* FIFA Card Colors */
+        .fifa-card-color-picker {
+            margin: 15px 0;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .color-option.selected {
+            border-color: #ffd700;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .color-option::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .color-option.selected::after {
+            opacity: 1;
+        }
+
+        /* FIFA Card Color Variants */
+        .fifa-green { background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%); }
+        .fifa-blue { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
+        .fifa-purple { background: linear-gradient(135deg, #581c87 0%, #8b5cf6 100%); }
+        .fifa-red { background: linear-gradient(135deg, #991b1b 0%, #ef4444 100%); }
+        .fifa-orange { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); }
+        .fifa-teal { background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); }
+        .fifa-default { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+
         .fifa-card {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
@@ -439,7 +492,6 @@
         }
 
         .fifa-card {
-            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
             border-radius: 15px;
             width: 320px;
             height: 550px;
@@ -863,6 +915,18 @@
                     <input type="number" id="qi" min="1" max="100" value="50" required>
                 </div>
 
+                <div class="fifa-card-color-picker">
+                    <label>FIFA Card Color</label>
+                    <div class="color-options">
+                        <div class="color-option fifa-green selected" data-color="green" onclick="selectColor('green', 'add')"></div>
+                        <div class="color-option fifa-blue" data-color="blue" onclick="selectColor('blue', 'add')"></div>
+                        <div class="color-option fifa-purple" data-color="purple" onclick="selectColor('purple', 'add')"></div>
+                        <div class="color-option fifa-red" data-color="red" onclick="selectColor('red', 'add')"></div>
+                        <div class="color-option fifa-orange" data-color="orange" onclick="selectColor('orange', 'add')"></div>
+                        <div class="color-option fifa-teal" data-color="teal" onclick="selectColor('teal', 'add')"></div>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Add Player</button>
             </form>
         </div>
@@ -986,6 +1050,18 @@
                 <div class="rating-group">
                     <label for="editQi">QI</label>
                     <input type="number" id="editQi" min="1" max="100" required>
+                </div>
+
+                <div class="fifa-card-color-picker">
+                    <label>FIFA Card Color</label>
+                    <div class="color-options">
+                        <div class="color-option fifa-green" data-color="green" onclick="selectColor('green', 'edit')"></div>
+                        <div class="color-option fifa-blue" data-color="blue" onclick="selectColor('blue', 'edit')"></div>
+                        <div class="color-option fifa-purple" data-color="purple" onclick="selectColor('purple', 'edit')"></div>
+                        <div class="color-option fifa-red" data-color="red" onclick="selectColor('red', 'edit')"></div>
+                        <div class="color-option fifa-orange" data-color="orange" onclick="selectColor('orange', 'edit')"></div>
+                        <div class="color-option fifa-teal" data-color="teal" onclick="selectColor('teal', 'edit')"></div>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Update Player</button>
@@ -1145,6 +1221,26 @@
         
         init();
 
+        // Color selection functionality
+        let selectedColor = 'green'; // Default color
+
+        function selectColor(color, form) {
+            selectedColor = color;
+            console.log(`🎨 Color selected: ${color} for form: ${form}`);
+            
+            // Update visual selection
+            const container = form === 'add' ? 
+                document.querySelector('#add-player .color-options') : 
+                document.querySelector('#editModal .color-options');
+                
+            container.querySelectorAll('.color-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            container.querySelector(`[data-color="${color}"]`).classList.add('selected');
+            console.log(`✅ Visual selection updated for ${color}`);
+        }
+
         // Edit modal functionality
         let editingPlayerId = null;
 
@@ -1178,6 +1274,10 @@
             document.getElementById('editBacher').value = player.bacher;
             document.getElementById('editSchiacciata').value = player.schiacciata;
             document.getElementById('editQi').value = player.qi;
+            
+            // Set current card color selection
+            const currentColor = player.cardColor || 'green';
+            selectColor(currentColor, 'edit');
             
             // Show current image if exists
             if (player.hasImage) {
@@ -1231,6 +1331,8 @@
             player.bacher = parseInt(document.getElementById('editBacher').value);
             player.schiacciata = parseInt(document.getElementById('editSchiacciata').value);
             player.qi = parseInt(document.getElementById('editQi').value);
+            player.cardColor = selectedColor;
+            console.log(`✏️ Editing player, setting cardColor to: ${selectedColor}`);
             player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
             
             // Check if any stats changed
@@ -1325,9 +1427,11 @@
                 hasImage: false,
                 imageFileName: null,
                 available: true,
-                history: []
+                history: [],
+                cardColor: selectedColor
             };
             
+            console.log(`💾 Creating player with cardColor: ${selectedColor}`);
             player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
             
             // Add initial history entry
@@ -1362,6 +1466,9 @@
             this.reset();
             document.getElementById('imagePreview').style.display = 'none';
             
+            // Reset color selection to default
+            selectColor('green', 'add');
+            
             alert('Player added successfully!');
         });
 
@@ -1395,13 +1502,28 @@
                 photoContainer.innerHTML = `<div class="fifa-player-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
             }
             
-            // Apply unavailable styling
+            // Apply card color and unavailable styling
             const fifaCard = document.querySelector('.fifa-card');
+            console.log(`🃏 FIFA Card found:`, fifaCard);
+            console.log(`🎨 Player object:`, player);
+            
+            // Reset all color classes
+            fifaCard.className = 'fifa-card';
+            console.log(`🔄 Reset FIFA card classes`);
+            
+            // Apply player's chosen color
+            const cardColor = player.cardColor || 'default';
+            console.log(`🎯 Applying color: ${cardColor} (class: fifa-${cardColor})`);
+            fifaCard.classList.add(`fifa-${cardColor}`);
+            console.log(`📋 FIFA card classes after color:`, fifaCard.className);
+            
+            // Apply unavailable styling if needed
             if (player.available === false) {
                 fifaCard.classList.add('unavailable');
-            } else {
-                fifaCard.classList.remove('unavailable');
+                console.log(`❌ Added unavailable class`);
             }
+            
+            console.log(`🏁 Final FIFA card classes:`, fifaCard.className);
             
             // Show modal
             document.getElementById('fifaModal').style.display = 'block';
