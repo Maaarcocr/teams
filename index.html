@@ -160,6 +160,42 @@
             padding: 15px;
             margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .player-card-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .edit-icon {
+            background: #28a745;
+        }
+
+        .delete-icon {
+            background: #dc3545;
+        }
+
+        .icon-btn:hover {
+            opacity: 0.8;
+            transform: scale(1.1);
         }
 
         .fifa-card {
@@ -532,6 +568,113 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* Growth Modal */
+        .growth-timeline {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .growth-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .growth-date {
+            font-weight: bold;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .growth-stats {
+            display: flex;
+            gap: 8px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 480px) {
+            .growth-stats {
+                gap: 4px;
+                font-size: 11px;
+            }
+        }
+
+        .growth-stat {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 480px) {
+            .growth-stat {
+                padding: 2px 4px;
+                font-size: 10px;
+            }
+        }
+
+        .growth-average {
+            font-weight: bold;
+            color: #17a2b8;
+            font-size: 14px;
+        }
+
+        .growth-summary {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .growth-summary h4 {
+            margin: 0 0 10px 0;
+        }
+
+        .growth-changes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .growth-changes {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+        }
+
+        .growth-change {
+            text-align: center;
+        }
+
+        .growth-change-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .growth-change-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .growth-change-value.positive {
+            color: #28a745;
+        }
+
+        .growth-change-value.negative {
+            color: #dc3545;
+        }
+
         .player-name {
             font-size: 18px;
             font-weight: bold;
@@ -785,6 +928,20 @@
         </div>
     </div>
 
+    <!-- Growth Modal -->
+    <div id="growthModal" class="edit-modal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h3 id="growthPlayerName">Player Growth</h3>
+                <button class="close-btn" onclick="closeGrowthModal()">&times;</button>
+            </div>
+            <div id="growthContent">
+                <div class="growth-summary" id="growthSummary"></div>
+                <div class="growth-timeline" id="growthTimeline"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Player Modal -->
     <div id="editModal" class="edit-modal">
         <div class="edit-modal-content">
@@ -838,58 +995,119 @@
     </div>
 
     <script>
-        let players = JSON.parse(localStorage.getItem('players')) || [];
-        let opfsRoot = null;
+        let players = [];
+        let db = null;
 
-        // Initialize OPFS
-        async function initOPFS() {
-            try {
-                opfsRoot = await navigator.storage.getDirectory();
-                console.log('OPFS initialized successfully');
-            } catch (error) {
-                console.error('OPFS not supported or failed to initialize:', error);
-            }
+        // IndexedDB wrapper functions
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('PlayerRatingDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    // Create players store
+                    if (!db.objectStoreNames.contains('players')) {
+                        const playersStore = db.createObjectStore('players', { keyPath: 'id' });
+                        playersStore.createIndex('name', 'name', { unique: false });
+                    }
+                    
+                    // Create images store
+                    if (!db.objectStoreNames.contains('images')) {
+                        db.createObjectStore('images', { keyPath: 'playerId' });
+                    }
+                };
+            });
         }
 
-        // Save image to OPFS
-        async function saveImageToOPFS(playerId, file) {
-            if (!opfsRoot) return null;
-            
-            try {
-                const fileName = `player-${playerId}.jpg`;
-                const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(file);
-                await writable.close();
-                return fileName;
-            } catch (error) {
-                console.error('Failed to save image:', error);
-                return null;
-            }
+        async function savePlayer(player) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['players'], 'readwrite');
+                const store = transaction.objectStore('players');
+                const request = store.put(player);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
         }
 
-        // Load image from OPFS
-        async function loadImageFromOPFS(fileName) {
-            if (!opfsRoot || !fileName) return null;
-            
-            try {
-                const fileHandle = await opfsRoot.getFileHandle(fileName);
-                const file = await fileHandle.getFile();
-                return URL.createObjectURL(file);
-            } catch (error) {
-                console.error('Failed to load image:', error);
-                return null;
-            }
+        async function getAllPlayers() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['players'], 'readonly');
+                const store = transaction.objectStore('players');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
         }
 
-        // Delete image from OPFS
-        async function deleteImageFromOPFS(fileName) {
-            if (!opfsRoot || !fileName) return;
-            
-            try {
-                await opfsRoot.removeEntry(fileName);
-            } catch (error) {
-                console.error('Failed to delete image:', error);
+        async function deletePlayer(playerId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['players'], 'readwrite');
+                const store = transaction.objectStore('players');
+                const request = store.delete(playerId);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveImage(playerId, file) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['images'], 'readwrite');
+                const store = transaction.objectStore('images');
+                const request = store.put({ playerId: playerId, image: file });
+                
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getImage(playerId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['images'], 'readonly');
+                const store = transaction.objectStore('images');
+                const request = store.get(playerId);
+                
+                request.onsuccess = () => {
+                    if (request.result) {
+                        resolve(URL.createObjectURL(request.result.image));
+                    } else {
+                        resolve(null);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function deleteImage(playerId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['images'], 'readwrite');
+                const store = transaction.objectStore('images');
+                const request = store.delete(playerId);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Migration function for existing localStorage data
+        async function migrateFromLocalStorage() {
+            const oldPlayers = JSON.parse(localStorage.getItem('players') || '[]');
+            if (oldPlayers.length > 0) {
+                console.log('Migrating players from localStorage to IndexedDB...');
+                for (const player of oldPlayers) {
+                    await savePlayer(player);
+                }
+                localStorage.removeItem('players');
+                console.log('Migration completed!');
             }
         }
 
@@ -911,8 +1129,21 @@
             }
         });
 
-        // Initialize OPFS when page loads
-        initOPFS();
+        // Initialize IndexedDB when page loads
+        async function init() {
+            try {
+                await initDB();
+                await migrateFromLocalStorage();
+                players = await getAllPlayers();
+                displayPlayers();
+                console.log('Database initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize database:', error);
+                alert('Failed to initialize database. Some features may not work.');
+            }
+        }
+        
+        init();
 
         // Edit modal functionality
         let editingPlayerId = null;
@@ -949,11 +1180,15 @@
             document.getElementById('editQi').value = player.qi;
             
             // Show current image if exists
-            if (player.hasImage && player.imageFileName) {
-                const imageUrl = await loadImageFromOPFS(player.imageFileName);
-                if (imageUrl) {
-                    document.getElementById('editPreviewImg').src = imageUrl;
-                    document.getElementById('editImagePreview').style.display = 'block';
+            if (player.hasImage) {
+                try {
+                    const imageUrl = await getImage(player.id);
+                    if (imageUrl) {
+                        document.getElementById('editPreviewImg').src = imageUrl;
+                        document.getElementById('editImagePreview').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Failed to load image:', error);
                 }
             }
             
@@ -979,6 +1214,16 @@
             const imageFile = document.getElementById('editPlayerImage').files[0];
             const player = players[playerIndex];
             
+            // Store old values for comparison
+            const oldStats = {
+                riflessi: player.riflessi,
+                palleggio: player.palleggio,
+                bacher: player.bacher,
+                schiacciata: player.schiacciata,
+                qi: player.qi,
+                average: parseFloat(player.average)
+            };
+            
             // Update player data
             player.name = document.getElementById('editPlayerName').value;
             player.riflessi = parseInt(document.getElementById('editRiflessi').value);
@@ -988,34 +1233,60 @@
             player.qi = parseInt(document.getElementById('editQi').value);
             player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
             
-            // Handle image update
-            if (imageFile) {
-                // Delete old image if exists
-                if (player.hasImage && player.imageFileName) {
-                    await deleteImageFromOPFS(player.imageFileName);
+            // Check if any stats changed
+            const newStats = {
+                riflessi: player.riflessi,
+                palleggio: player.palleggio,
+                bacher: player.bacher,
+                schiacciata: player.schiacciata,
+                qi: player.qi,
+                average: parseFloat(player.average)
+            };
+            
+            const hasChanges = Object.keys(oldStats).some(key => oldStats[key] !== newStats[key]);
+            
+            // Add history entry if stats changed
+            if (hasChanges) {
+                // Initialize history if it doesn't exist (for old players)
+                if (!player.history) {
+                    player.history = [];
                 }
                 
-                // Save new image
-                const fileName = await saveImageToOPFS(editingPlayerId, imageFile);
-                if (fileName) {
+                player.history.push({
+                    date: new Date().toISOString().split('T')[0],
+                    riflessi: player.riflessi,
+                    palleggio: player.palleggio,
+                    bacher: player.bacher,
+                    schiacciata: player.schiacciata,
+                    qi: player.qi,
+                    average: parseFloat(player.average),
+                    reason: 'Stats updated'
+                });
+            }
+            
+            // Handle image update
+            if (imageFile) {
+                try {
+                    await saveImage(editingPlayerId, imageFile);
                     player.hasImage = true;
-                    player.imageFileName = fileName;
+                } catch (error) {
+                    console.error('Failed to save image:', error);
                 }
             }
             
-            // Save to localStorage
-            localStorage.setItem('players', JSON.stringify(players));
+            // Save to IndexedDB
+            await savePlayer(player);
             
             closeEditModal();
             displayPlayers();
             alert('Player updated successfully!');
         });
 
-        function toggleAvailability(playerId) {
+        async function toggleAvailability(playerId) {
             const player = players.find(p => p.id === playerId);
             if (player) {
                 player.available = !player.available;
-                localStorage.setItem('players', JSON.stringify(players));
+                await savePlayer(player);
                 displayPlayers();
             }
         }
@@ -1053,22 +1324,40 @@
                 qi: parseInt(document.getElementById('qi').value),
                 hasImage: false,
                 imageFileName: null,
-                available: true
+                available: true,
+                history: []
             };
             
             player.average = ((player.riflessi + player.palleggio + player.bacher + player.schiacciata + player.qi) / 5).toFixed(1);
             
-            // Save image to OPFS if provided
+            // Add initial history entry
+            player.history.push({
+                date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+                riflessi: player.riflessi,
+                palleggio: player.palleggio,
+                bacher: player.bacher,
+                schiacciata: player.schiacciata,
+                qi: player.qi,
+                average: parseFloat(player.average),
+                reason: 'Initial rating'
+            });
+            
+            // Save player to IndexedDB
+            await savePlayer(player);
+            
+            // Save image if provided
             if (imageFile) {
-                const fileName = await saveImageToOPFS(playerId, imageFile);
-                if (fileName) {
+                try {
+                    await saveImage(playerId, imageFile);
                     player.hasImage = true;
-                    player.imageFileName = fileName;
+                } catch (error) {
+                    console.error('Failed to save image:', error);
                 }
             }
             
+            // Update local array and refresh display
             players.push(player);
-            localStorage.setItem('players', JSON.stringify(players));
+            displayPlayers();
             
             this.reset();
             document.getElementById('imagePreview').style.display = 'none';
@@ -1091,9 +1380,9 @@
             
             // Handle player photo
             const photoContainer = document.getElementById('fifaPlayerPhoto');
-            if (player.hasImage && player.imageFileName) {
+            if (player.hasImage) {
                 try {
-                    const imageUrl = await loadImageFromOPFS(player.imageFileName);
+                    const imageUrl = await getImage(player.id);
                     if (imageUrl) {
                         photoContainer.innerHTML = `<img src="${imageUrl}" class="fifa-player-photo" alt="${player.name}">`;
                     } else {
@@ -1122,6 +1411,102 @@
             document.getElementById('fifaModal').style.display = 'none';
         }
 
+        function showPlayerGrowth(playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+            
+            // Initialize history if it doesn't exist (for old players)
+            if (!player.history || player.history.length === 0) {
+                alert('No growth history available for this player yet.');
+                return;
+            }
+            
+            document.getElementById('growthPlayerName').textContent = `${player.name} - Season Growth`;
+            
+            // Calculate growth summary
+            const firstEntry = player.history[0];
+            const lastEntry = player.history[player.history.length - 1];
+            
+            const changes = {
+                riflessi: lastEntry.riflessi - firstEntry.riflessi,
+                palleggio: lastEntry.palleggio - firstEntry.palleggio,
+                bacher: lastEntry.bacher - firstEntry.bacher,
+                schiacciata: lastEntry.schiacciata - firstEntry.schiacciata,
+                qi: lastEntry.qi - firstEntry.qi,
+                average: lastEntry.average - firstEntry.average
+            };
+            
+            // Create summary
+            const summaryHtml = `
+                <h4>Season Progress</h4>
+                <div class="growth-changes">
+                    <div class="growth-change">
+                        <div class="growth-change-label">RIF</div>
+                        <div class="growth-change-value ${changes.riflessi >= 0 ? 'positive' : 'negative'}">
+                            ${changes.riflessi >= 0 ? '+' : ''}${changes.riflessi}
+                        </div>
+                    </div>
+                    <div class="growth-change">
+                        <div class="growth-change-label">PAL</div>
+                        <div class="growth-change-value ${changes.palleggio >= 0 ? 'positive' : 'negative'}">
+                            ${changes.palleggio >= 0 ? '+' : ''}${changes.palleggio}
+                        </div>
+                    </div>
+                    <div class="growth-change">
+                        <div class="growth-change-label">BAC</div>
+                        <div class="growth-change-value ${changes.bacher >= 0 ? 'positive' : 'negative'}">
+                            ${changes.bacher >= 0 ? '+' : ''}${changes.bacher}
+                        </div>
+                    </div>
+                    <div class="growth-change">
+                        <div class="growth-change-label">SCH</div>
+                        <div class="growth-change-value ${changes.schiacciata >= 0 ? 'positive' : 'negative'}">
+                            ${changes.schiacciata >= 0 ? '+' : ''}${changes.schiacciata}
+                        </div>
+                    </div>
+                    <div class="growth-change">
+                        <div class="growth-change-label">QI</div>
+                        <div class="growth-change-value ${changes.qi >= 0 ? 'positive' : 'negative'}">
+                            ${changes.qi >= 0 ? '+' : ''}${changes.qi}
+                        </div>
+                    </div>
+                    <div class="growth-change">
+                        <div class="growth-change-label">AVG</div>
+                        <div class="growth-change-value ${changes.average >= 0 ? 'positive' : 'negative'}">
+                            ${changes.average >= 0 ? '+' : ''}${changes.average.toFixed(1)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Create timeline
+            const timelineHtml = player.history.slice().reverse().map(entry => `
+                <div class="growth-entry">
+                    <div>
+                        <div class="growth-date">${entry.date}</div>
+                        <div style="font-size: 12px; color: #6c757d;">${entry.reason}</div>
+                    </div>
+                    <div class="growth-stats">
+                        <div class="growth-stat">RIF: ${entry.riflessi}</div>
+                        <div class="growth-stat">PAL: ${entry.palleggio}</div>
+                        <div class="growth-stat">BAC: ${entry.bacher}</div>
+                        <div class="growth-stat">SCH: ${entry.schiacciata}</div>
+                        <div class="growth-stat">QI: ${entry.qi}</div>
+                    </div>
+                    <div class="growth-average">AVG: ${entry.average.toFixed(1)}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('growthSummary').innerHTML = summaryHtml;
+            document.getElementById('growthTimeline').innerHTML = timelineHtml;
+            
+            document.getElementById('growthModal').style.display = 'flex';
+        }
+
+        function closeGrowthModal() {
+            document.getElementById('growthModal').style.display = 'none';
+        }
+
         async function displayPlayers() {
             const playersList = document.getElementById('playersList');
             playersList.innerHTML = '';
@@ -1140,6 +1525,10 @@
                 // List View Only
                 playerCard.className = 'player-card' + unavailableClass;
                 playerCard.innerHTML = `
+                    <div class="player-card-controls">
+                        <button class="icon-btn edit-icon" onclick="editPlayer(${player.id})" title="Edit Player">✏️</button>
+                        <button class="icon-btn delete-icon" onclick="deletePlayerFromDB(${player.id})" title="Delete Player">🗑️</button>
+                    </div>
                     <div class="player-name">${player.name} ${player.available === false ? '(Unavailable)' : ''}</div>
                     <div class="player-stats">
                         <div class="stat">
@@ -1166,11 +1555,10 @@
                     <div class="player-average">Average: ${player.average}</div>
                     <div class="player-actions">
                         <button class="fifa-card-btn" onclick="showFifaCard(${player.id})">FIFA Card</button>
-                        <button class="edit-btn" onclick="editPlayer(${player.id})">Edit</button>
+                        <button class="edit-btn" onclick="showPlayerGrowth(${player.id})" style="background: #17a2b8;">Growth</button>
                         <button class="availability-btn ${player.available === false ? 'unavailable' : ''}" onclick="toggleAvailability(${player.id})">
                             ${player.available === false ? 'Unavailable' : 'Available'}
                         </button>
-                        <button class="delete-btn" onclick="deletePlayer(${player.id})">Delete</button>
                     </div>
                 `;
                 
@@ -1178,16 +1566,26 @@
             }
         }
 
-        async function deletePlayer(playerId) {
+        async function deletePlayerFromDB(playerId) {
             if (confirm('Are you sure you want to delete this player?')) {
                 const player = players.find(p => p.id === playerId);
-                if (player && player.hasImage && player.imageFileName) {
-                    await deleteImageFromOPFS(player.imageFileName);
-                }
                 
-                players = players.filter(player => player.id !== playerId);
-                localStorage.setItem('players', JSON.stringify(players));
-                displayPlayers();
+                try {
+                    // Delete player from IndexedDB
+                    await deletePlayer(playerId);
+                    
+                    // Delete image if exists
+                    if (player && player.hasImage) {
+                        await deleteImage(playerId);
+                    }
+                    
+                    // Update local array
+                    players = players.filter(p => p.id !== playerId);
+                    displayPlayers();
+                } catch (error) {
+                    console.error('Failed to delete player:', error);
+                    alert('Failed to delete player');
+                }
             }
         }
 
@@ -1269,55 +1667,80 @@
             `;
         }
 
-        function exportData() {
-            const data = {
-                players: players,
-                exportDate: new Date().toISOString()
-            };
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'player-ratings-export.json';
-            a.click();
-            URL.revokeObjectURL(url);
+        async function exportData() {
+            try {
+                const allPlayers = await getAllPlayers();
+                const data = {
+                    players: allPlayers,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'player-ratings-export.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Export failed:', error);
+                alert('Export failed!');
+            }
         }
 
-        function importData() {
+        async function importData() {
             const file = document.getElementById('importFile').files[0];
             if (!file) return;
             
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
                     if (data.players && Array.isArray(data.players)) {
-                        players = data.players;
-                        localStorage.setItem('players', JSON.stringify(players));
-                        alert('Data imported successfully!');
+                        // Clear existing data first
+                        await clearAllData(false);
+                        
+                        // Import new data
+                        for (const player of data.players) {
+                            await savePlayer(player);
+                        }
+                        
+                        players = await getAllPlayers();
                         displayPlayers();
+                        alert('Data imported successfully!');
                     } else {
                         alert('Invalid file format!');
                     }
                 } catch (error) {
+                    console.error('Import failed:', error);
                     alert('Error reading file!');
                 }
             };
             reader.readAsText(file);
         }
 
-        function clearAllData() {
-            if (confirm('Are you sure you want to clear all data? This cannot be undone!')) {
-                players = [];
-                localStorage.removeItem('players');
-                displayPlayers();
-                document.getElementById('teamsContainer').innerHTML = '';
-                alert('All data cleared!');
+        async function clearAllData(confirm = true) {
+            if (!confirm || window.confirm('Are you sure you want to clear all data? This cannot be undone!')) {
+                try {
+                    // Clear players
+                    const transaction = db.transaction(['players', 'images'], 'readwrite');
+                    const playersStore = transaction.objectStore('players');
+                    const imagesStore = transaction.objectStore('images');
+                    
+                    await playersStore.clear();
+                    await imagesStore.clear();
+                    
+                    players = [];
+                    displayPlayers();
+                    document.getElementById('teamsContainer').innerHTML = '';
+                    
+                    if (confirm) alert('All data cleared!');
+                } catch (error) {
+                    console.error('Clear failed:', error);
+                    alert('Failed to clear data!');
+                }
             }
         }
-
-        displayPlayers();
     </script>
 </body>
 </html>
