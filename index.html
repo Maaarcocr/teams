@@ -368,140 +368,6 @@
             color: #666;
         }
 
-        .fifa-card-modal-content {
-            background: transparent;
-            padding: 0;
-            border-radius: 0;
-            width: 100vw;
-            height: 100vh;
-            max-width: none;
-            max-height: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .fullscreen-fifa-card {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            border-radius: 20px;
-            padding: 40px;
-            color: white;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            position: relative;
-            overflow: hidden;
-            width: 90vw;
-            max-width: 400px;
-            min-height: 600px;
-        }
-
-        .fullscreen-fifa-card.player-unavailable {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        }
-
-        .fullscreen-fifa-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            animation: shimmer 4s infinite;
-        }
-
-        .fifa-card-header-full {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            z-index: 1;
-            position: relative;
-        }
-
-        .fifa-overall-full {
-            font-size: 80px;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
-            line-height: 1;
-        }
-
-        .fifa-position-full {
-            font-size: 18px;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-
-        .fifa-content-full {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 30px;
-            z-index: 1;
-            position: relative;
-        }
-
-        .fifa-image-full {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 5px solid #ffd700;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-        }
-
-        .fifa-placeholder-full {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 60px;
-            color: #ffd700;
-            border: 5px solid #ffd700;
-            font-weight: bold;
-        }
-
-        .fifa-name-full {
-            font-size: 28px;
-            font-weight: bold;
-            text-align: center;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-        }
-
-        .fifa-stats-full {
-            width: 100%;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .fifa-stat-full {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .fifa-stat-name-full {
-            font-size: 16px;
-            color: #ccc;
-            font-weight: bold;
-        }
-
-        .fifa-stat-value-full {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ffd700;
-        }
 
         .fifa-card-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -512,6 +378,158 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: bold;
+        }
+
+        /* Clean FIFA Card Modal */
+        .fifa-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            z-index: 1000;
+        }
+
+        .fifa-modal-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .fifa-card {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+            border-radius: 15px;
+            width: 320px;
+            height: 550px;
+            position: relative;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 3px solid #ffd700;
+            overflow: hidden;
+        }
+
+        .fifa-card.unavailable {
+            background: linear-gradient(135deg, #4a4a4a 0%, #2d2d2d 100%);
+            border-color: #888;
+        }
+
+        .fifa-header {
+            padding: 15px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+        .fifa-overall {
+            font-size: 48px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            line-height: 1;
+        }
+
+        .fifa-position {
+            background: rgba(255, 215, 0, 0.9);
+            color: #1a472a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .fifa-player-section {
+            padding: 0 15px;
+            text-align: center;
+        }
+
+        .fifa-player-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+            object-fit: cover;
+            margin: 0 auto 10px;
+        }
+
+        .fifa-player-placeholder {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: #ffd700;
+            font-weight: bold;
+            margin: 0 auto 10px;
+        }
+
+        .fifa-player-name {
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .fifa-stats {
+            padding: 15px 15px 20px 15px;
+        }
+
+        .fifa-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            margin: 4px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #ffd700;
+        }
+
+        .fifa-stat-name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .fifa-stat-value {
+            color: #ffd700;
+            font-size: 16px;
+            font-weight: bold;
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .fifa-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fifa-close:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .player-name {
@@ -730,10 +748,40 @@
     </div>
 
     <!-- FIFA Card Modal -->
-    <div id="fifaCardModal" class="edit-modal">
-        <div class="fifa-card-modal-content">
-            <button class="close-btn" onclick="closeFifaCardModal()" style="position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; width: 40px; height: 40px;">&times;</button>
-            <div id="fullscreenFifaCard"></div>
+    <div id="fifaModal" class="fifa-modal">
+        <div class="fifa-modal-container">
+            <div class="fifa-card">
+                <button class="fifa-close" onclick="closeFifaCard()">&times;</button>
+                <div class="fifa-header">
+                    <div class="fifa-overall" id="fifaOverall">85</div>
+                </div>
+                <div class="fifa-player-section">
+                    <div id="fifaPlayerPhoto"></div>
+                    <div class="fifa-player-name" id="fifaPlayerName">Player Name</div>
+                </div>
+                <div class="fifa-stats">
+                    <div class="fifa-stat-row">
+                        <span class="fifa-stat-name">RIFLESSI</span>
+                        <span class="fifa-stat-value" id="fifaRiflessi">85</span>
+                    </div>
+                    <div class="fifa-stat-row">
+                        <span class="fifa-stat-name">PALLEGGIO</span>
+                        <span class="fifa-stat-value" id="fifaPalleggio">85</span>
+                    </div>
+                    <div class="fifa-stat-row">
+                        <span class="fifa-stat-name">BACHER</span>
+                        <span class="fifa-stat-value" id="fifaBacher">85</span>
+                    </div>
+                    <div class="fifa-stat-row">
+                        <span class="fifa-stat-name">SCHIACCIATA</span>
+                        <span class="fifa-stat-value" id="fifaSchiacciata">85</span>
+                    </div>
+                    <div class="fifa-stat-row">
+                        <span class="fifa-stat-name">QI</span>
+                        <span class="fifa-stat-value" id="fifaQi">85</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1032,64 +1080,46 @@
             const player = players.find(p => p.id === playerId);
             if (!player) return;
             
-            let imageHtml = '';
+            // Update card content
+            document.getElementById('fifaOverall').textContent = Math.round(player.average);
+            document.getElementById('fifaPlayerName').textContent = player.name;
+            document.getElementById('fifaRiflessi').textContent = player.riflessi;
+            document.getElementById('fifaPalleggio').textContent = player.palleggio;
+            document.getElementById('fifaBacher').textContent = player.bacher;
+            document.getElementById('fifaSchiacciata').textContent = player.schiacciata;
+            document.getElementById('fifaQi').textContent = player.qi;
+            
+            // Handle player photo
+            const photoContainer = document.getElementById('fifaPlayerPhoto');
             if (player.hasImage && player.imageFileName) {
                 try {
                     const imageUrl = await loadImageFromOPFS(player.imageFileName);
                     if (imageUrl) {
-                        imageHtml = `<img src="${imageUrl}" class="fifa-image-full" alt="${player.name}">`;
+                        photoContainer.innerHTML = `<img src="${imageUrl}" class="fifa-player-photo" alt="${player.name}">`;
                     } else {
-                        imageHtml = `<div class="fifa-placeholder-full">${player.name.charAt(0).toUpperCase()}</div>`;
+                        photoContainer.innerHTML = `<div class="fifa-player-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
                     }
                 } catch (error) {
-                    imageHtml = `<div class="fifa-placeholder-full">${player.name.charAt(0).toUpperCase()}</div>`;
+                    photoContainer.innerHTML = `<div class="fifa-player-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
                 }
             } else {
-                imageHtml = `<div class="fifa-placeholder-full">${player.name.charAt(0).toUpperCase()}</div>`;
+                photoContainer.innerHTML = `<div class="fifa-player-placeholder">${player.name.charAt(0).toUpperCase()}</div>`;
             }
             
-            const unavailableClass = player.available === false ? ' player-unavailable' : '';
+            // Apply unavailable styling
+            const fifaCard = document.querySelector('.fifa-card');
+            if (player.available === false) {
+                fifaCard.classList.add('unavailable');
+            } else {
+                fifaCard.classList.remove('unavailable');
+            }
             
-            document.getElementById('fullscreenFifaCard').innerHTML = `
-                <div class="fullscreen-fifa-card${unavailableClass}">
-                    <div class="fifa-card-header-full">
-                        <div class="fifa-overall-full">${Math.round(player.average)}</div>
-                        <div class="fifa-position-full">${player.available === false ? 'OUT' : 'ALL'}</div>
-                    </div>
-                    <div class="fifa-content-full">
-                        ${imageHtml}
-                        <div class="fifa-name-full">${player.name}</div>
-                        <div class="fifa-stats-full">
-                            <div class="fifa-stat-full">
-                                <span class="fifa-stat-name-full">RIFLESSI</span>
-                                <span class="fifa-stat-value-full">${player.riflessi}</span>
-                            </div>
-                            <div class="fifa-stat-full">
-                                <span class="fifa-stat-name-full">PALLEGGIO</span>
-                                <span class="fifa-stat-value-full">${player.palleggio}</span>
-                            </div>
-                            <div class="fifa-stat-full">
-                                <span class="fifa-stat-name-full">BACHER</span>
-                                <span class="fifa-stat-value-full">${player.bacher}</span>
-                            </div>
-                            <div class="fifa-stat-full">
-                                <span class="fifa-stat-name-full">SCHIACCIATA</span>
-                                <span class="fifa-stat-value-full">${player.schiacciata}</span>
-                            </div>
-                            <div class="fifa-stat-full" style="grid-column: 1 / -1;">
-                                <span class="fifa-stat-name-full">QI</span>
-                                <span class="fifa-stat-value-full">${player.qi}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('fifaCardModal').style.display = 'flex';
+            // Show modal
+            document.getElementById('fifaModal').style.display = 'block';
         }
 
-        function closeFifaCardModal() {
-            document.getElementById('fifaCardModal').style.display = 'none';
+        function closeFifaCard() {
+            document.getElementById('fifaModal').style.display = 'none';
         }
 
         async function displayPlayers() {
