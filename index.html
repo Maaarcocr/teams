@@ -501,6 +501,25 @@
             50% { transform: translateX(100%) rotate(45deg); }
         }
 
+        /* Special Marco Parisi rainbow card */
+        .fifa-marco-parisi {
+            background: linear-gradient(45deg, #ff0000 0%, #ff8000 14%, #ffff00 28%, #80ff00 42%, #00ff00 57%, #00ff80 71%, #00ffff 85%, #0080ff 100%) !important;
+            animation: rainbowShift 4s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes rainbowShift {
+            0%, 100% { filter: hue-rotate(0deg) saturate(1.2); }
+            50% { filter: hue-rotate(180deg) saturate(1.5); }
+        }
+
+
+        .fifa-marco-parisi .fifa-overall,
+        .fifa-marco-parisi .fifa-player-placeholder {
+            color: #fff !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8) !important;
+        }
+
         /* Header with rating */
         .fifa-header {
             padding: 12px 15px 8px 15px;
@@ -1566,9 +1585,14 @@
             // Reset all color classes
             fifaCard.className = 'fifa-card';
             
-            // Apply automatic color based on rating and icon status
-            const cardCategory = getCardCategory(player.average, player.isIcon);
-            fifaCard.classList.add(`fifa-${cardCategory}`);
+            // Check for special Marco Parisi card
+            if (player.name.toLowerCase() === 'marco parisi') {
+                fifaCard.classList.add('fifa-marco-parisi');
+            } else {
+                // Apply automatic color based on rating and icon status
+                const cardCategory = getCardCategory(player.average, player.isIcon);
+                fifaCard.classList.add(`fifa-${cardCategory}`);
+            }
             
             // Apply unavailable styling if needed
             if (player.available === false) {
