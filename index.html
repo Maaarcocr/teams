@@ -947,6 +947,7 @@
             <button class="tab-button active" onclick="showTab('add-player')">Add Player</button>
             <button class="tab-button" onclick="showTab('players')">Players</button>
             <button class="tab-button" onclick="showTab('teams')">Teams</button>
+            <button class="tab-button" onclick="showTab('statistics')">Statistics</button>
             <button class="tab-button" onclick="showTab('data')">Data</button>
         </div>
 
@@ -1012,6 +1013,32 @@
             </div>
             <button class="btn btn-success" onclick="generateTeams()">Generate Teams</button>
             <div id="teamsContainer"></div>
+        </div>
+
+        <div id="statistics" class="tab-content">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label for="timeFilter" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Time Period:</label>
+                    <select id="timeFilter" onchange="filterStats(this.value)" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #667eea; font-size: 16px; background: white;">
+                        <option value="all">All Time</option>
+                        <option value="month">This Month</option>
+                        <option value="week">This Week</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="sortBy" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Sort By:</label>
+                    <select id="sortBy" onchange="sortLeaderboard(this.value)" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #667eea; font-size: 16px; background: white;">
+                        <option value="winRate">Win Rate</option>
+                        <option value="wins">Total Wins</option>
+                        <option value="total">Total Games</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="statisticsContent">
+                <p style="text-align: center; color: #666; margin-top: 20px;">Loading statistics...</p>
+            </div>
         </div>
 
         <div id="data" class="tab-content">
@@ -1138,11 +1165,12 @@
     <script>
         let players = [];
         let db = null;
+        let currentTeams = [];
 
         // IndexedDB wrapper functions
         async function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('PlayerRatingDB', 1);
+                const request = indexedDB.open('PlayerRatingDB', 2);
                 
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => {
@@ -1162,6 +1190,12 @@
                     // Create images store
                     if (!db.objectStoreNames.contains('images')) {
                         db.createObjectStore('images', { keyPath: 'playerId' });
+                    }
+                    
+                    // Create matches store
+                    if (!db.objectStoreNames.contains('matches')) {
+                        const matchesStore = db.createObjectStore('matches', { keyPath: 'id' });
+                        matchesStore.createIndex('date', 'date', { unique: false });
                     }
                 };
             });
@@ -1237,6 +1271,152 @@
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = () => reject(request.error);
             });
+        }
+
+        // Match database functions
+        async function saveMatch(match) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['matches'], 'readwrite');
+                const store = transaction.objectStore('matches');
+                const request = store.put(match);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getAllMatches() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['matches'], 'readonly');
+                const store = transaction.objectStore('matches');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getMatchesByTimeFilter(timeFilter) {
+            const allMatches = await getAllMatches();
+            if (timeFilter === 'all') return allMatches;
+            
+            const now = new Date();
+            const filterDate = new Date();
+            
+            if (timeFilter === 'week') {
+                filterDate.setDate(now.getDate() - 7);
+            } else if (timeFilter === 'month') {
+                filterDate.setMonth(now.getMonth() - 1);
+            }
+            
+            return allMatches.filter(match => new Date(match.date) >= filterDate);
+        }
+
+        // Statistics calculation functions
+        async function getPlayerStats(playerId, timeFilter = 'all') {
+            const matches = await getMatchesByTimeFilter(timeFilter);
+            const playerMatches = matches.filter(match => 
+                match.teams.some(team => team.players.includes(playerId))
+            );
+            
+            const wins = playerMatches.filter(match => {
+                const playerTeam = match.teams.find(team => team.players.includes(playerId));
+                return playerTeam.result === 'win';
+            }).length;
+            
+            const losses = playerMatches.length - wins;
+            const winRate = playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0;
+            
+            return { 
+                wins, 
+                losses, 
+                total: playerMatches.length, 
+                winRate: parseFloat(winRate.toFixed(1)),
+                matches: playerMatches
+            };
+        }
+
+        async function getLeaderboard(sortBy = 'winRate', timeFilter = 'all') {
+            const allStats = [];
+            
+            for (const player of players) {
+                const stats = await getPlayerStats(player.id, timeFilter);
+                if (stats.total > 0) { // Only include players with matches
+                    allStats.push({
+                        player: player,
+                        stats: stats
+                    });
+                }
+            }
+            
+            // Sort by specified criteria
+            allStats.sort((a, b) => {
+                switch (sortBy) {
+                    case 'wins':
+                        return b.stats.wins - a.stats.wins;
+                    case 'total':
+                        return b.stats.total - a.stats.total;
+                    case 'winRate':
+                    default:
+                        return b.stats.winRate - a.stats.winRate;
+                }
+            });
+            
+            return allStats;
+        }
+
+        async function recordMatchResult(winningTeamIndex, teams, notes = '') {
+            const matchId = Date.now();
+            const matchDate = new Date().toISOString().split('T')[0];
+            
+            // Create match record
+            const match = {
+                id: matchId,
+                date: matchDate,
+                teams: teams.map((team, index) => ({
+                    players: team.map(p => p.id),
+                    average: parseFloat(team.reduce((sum, p) => sum + parseFloat(p.average), 0) / team.length).toFixed(1),
+                    result: index === winningTeamIndex ? 'win' : 'loss'
+                })),
+                notes: notes
+            };
+            
+            // Save to database
+            await saveMatch(match);
+            
+            return match;
+        }
+
+        async function recordMatchResultWithTeams(winningTeamIndex, losingTeamIndex, teams, notes = '') {
+            const matchId = Date.now();
+            const matchDate = new Date().toISOString().split('T')[0];
+            
+            const winningTeam = teams[winningTeamIndex];
+            const losingTeam = teams[losingTeamIndex];
+            
+            // Create match record with teams that played
+            const match = {
+                id: matchId,
+                date: matchDate,
+                teams: [
+                    {
+                        players: winningTeam.map(p => p.id),
+                        average: parseFloat(winningTeam.reduce((sum, p) => sum + parseFloat(p.average), 0) / winningTeam.length).toFixed(1),
+                        result: 'win'
+                    },
+                    {
+                        players: losingTeam.map(p => p.id),
+                        average: parseFloat(losingTeam.reduce((sum, p) => sum + parseFloat(p.average), 0) / losingTeam.length).toFixed(1),
+                        result: 'loss'
+                    }
+                ],
+                notes: notes
+            };
+            
+            // Save to database
+            await saveMatch(match);
+            
+            return match;
         }
 
         // Migration function for existing localStorage data
@@ -1488,6 +1668,8 @@
             
             if (tabName === 'players') {
                 displayPlayers();
+            } else if (tabName === 'statistics') {
+                displayStatistics();
             }
         }
 
@@ -1824,6 +2006,9 @@
                 }
             }
             
+            // Store current teams globally for match recording
+            currentTeams = teams;
+            
             // Calculate team averages
             const teamAverages = teams.map(team => {
                 if (team.length === 0) return 0;
@@ -1860,14 +2045,154 @@
                         <p>Difference: ${(Math.max(...teamAverages.map(Number)) - Math.min(...teamAverages.map(Number))).toFixed(1)}</p>
                     </div>
                 </div>
+                <div id="matchResultSection" style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 8px; border: 2px solid #17a2b8;">
+                    <h4 style="margin-bottom: 15px; color: #333;">Record Match Result</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label for="winningTeam" style="display: block; margin-bottom: 8px; font-weight: bold;">Select Winning Team:</label>
+                        <select id="winningTeam" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="">-- Select Winner --</option>
+                            ${teams.map((team, index) => `
+                                <option value="${index}">Team ${index + 1} (Avg: ${teamAverages[index]})</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label for="losingTeam" style="display: block; margin-bottom: 8px; font-weight: bold;">Select Losing Team:</label>
+                        <select id="losingTeam" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="">-- Select Loser --</option>
+                            ${teams.map((team, index) => `
+                                <option value="${index}">Team ${index + 1} (Avg: ${teamAverages[index]})</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label for="matchNotes" style="display: block; margin-bottom: 8px; font-weight: bold;">Notes (optional):</label>
+                        <input type="text" id="matchNotes" placeholder="Match notes..." style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    </div>
+                    <button onclick="recordMatch()" class="btn btn-success" style="width: 100%;">Record Match Result</button>
+                </div>
             `;
+        }
+
+        async function recordMatch() {
+            const winningTeamIndex = parseInt(document.getElementById('winningTeam').value);
+            const losingTeamIndex = parseInt(document.getElementById('losingTeam').value);
+            const notes = document.getElementById('matchNotes').value;
+            
+            // Validation
+            if (isNaN(winningTeamIndex) || winningTeamIndex < 0 || winningTeamIndex >= currentTeams.length) {
+                alert('Please select a winning team!');
+                return;
+            }
+            
+            if (isNaN(losingTeamIndex) || losingTeamIndex < 0 || losingTeamIndex >= currentTeams.length) {
+                alert('Please select a losing team!');
+                return;
+            }
+            
+            if (winningTeamIndex === losingTeamIndex) {
+                alert('Winning team and losing team cannot be the same!');
+                return;
+            }
+            
+            if (currentTeams.length === 0) {
+                alert('No teams generated yet!');
+                return;
+            }
+            
+            try {
+                await recordMatchResultWithTeams(winningTeamIndex, losingTeamIndex, currentTeams, notes);
+                alert('Match result recorded successfully!');
+                
+                // Reset form
+                document.getElementById('winningTeam').value = '';
+                document.getElementById('losingTeam').value = '';
+                document.getElementById('matchNotes').value = '';
+                
+                // Hide the match result section
+                document.getElementById('matchResultSection').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Failed to record match:', error);
+                alert('Failed to record match result');
+            }
+        }
+
+        // Statistics display functions
+        let currentTimeFilter = 'all';
+        let currentSortBy = 'winRate';
+
+        async function displayStatistics() {
+            try {
+                const leaderboard = await getLeaderboard(currentSortBy, currentTimeFilter);
+                const statisticsContent = document.getElementById('statisticsContent');
+                
+                if (leaderboard.length === 0) {
+                    statisticsContent.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">No match data available yet.</p>';
+                    return;
+                }
+                
+                let html = '<div class="teams-container">';
+                
+                leaderboard.forEach((entry, index) => {
+                    const { player, stats } = entry;
+                    const rank = index + 1;
+                    
+                    html += `
+                        <div class="team" style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <span style="font-size: 18px; font-weight: bold; color: #333;">#${rank} ${player.name}</span>
+                                    <span style="font-size: 14px; color: #666; margin-left: 10px;">(Rating: ${player.average})</span>
+                                </div>
+                                <div style="font-size: 24px; font-weight: bold; color: #667eea;">
+                                    ${stats.winRate}%
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                                <div style="text-align: center; padding: 8px; background: #e8f5e8; border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: bold; color: #28a745;">${stats.wins}</div>
+                                    <div style="font-size: 12px; color: #666;">Wins</div>
+                                </div>
+                                <div style="text-align: center; padding: 8px; background: #ffeaea; border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: bold; color: #dc3545;">${stats.losses}</div>
+                                    <div style="font-size: 12px; color: #666;">Losses</div>
+                                </div>
+                                <div style="text-align: center; padding: 8px; background: #f0f0f0; border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${stats.total}</div>
+                                    <div style="font-size: 12px; color: #666;">Total</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                statisticsContent.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Failed to display statistics:', error);
+                document.getElementById('statisticsContent').innerHTML = '<p style="text-align: center; color: #dc3545; margin-top: 20px;">Error loading statistics.</p>';
+            }
+        }
+
+        function filterStats(timeFilter) {
+            currentTimeFilter = timeFilter;
+            displayStatistics();
+        }
+
+        function sortLeaderboard(sortBy) {
+            currentSortBy = sortBy;
+            displayStatistics();
         }
 
         async function exportData() {
             try {
                 const allPlayers = await getAllPlayers();
+                const allMatches = await getAllMatches();
                 const data = {
                     players: allPlayers,
+                    matches: allMatches,
                     exportDate: new Date().toISOString()
                 };
                 
@@ -1896,9 +2221,16 @@
                         // Clear existing data first
                         await clearAllData(false);
                         
-                        // Import new data
+                        // Import players
                         for (const player of data.players) {
                             await savePlayer(player);
+                        }
+                        
+                        // Import matches if they exist
+                        if (data.matches && Array.isArray(data.matches)) {
+                            for (const match of data.matches) {
+                                await saveMatch(match);
+                            }
                         }
                         
                         players = await getAllPlayers();
@@ -1918,17 +2250,21 @@
         async function clearAllData(confirm = true) {
             if (!confirm || window.confirm('Are you sure you want to clear all data? This cannot be undone!')) {
                 try {
-                    // Clear players
-                    const transaction = db.transaction(['players', 'images'], 'readwrite');
+                    // Clear all data stores
+                    const transaction = db.transaction(['players', 'images', 'matches'], 'readwrite');
                     const playersStore = transaction.objectStore('players');
                     const imagesStore = transaction.objectStore('images');
+                    const matchesStore = transaction.objectStore('matches');
                     
                     await playersStore.clear();
                     await imagesStore.clear();
+                    await matchesStore.clear();
                     
                     players = [];
+                    currentTeams = [];
                     displayPlayers();
                     document.getElementById('teamsContainer').innerHTML = '';
+                    document.getElementById('statisticsContent').innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">No match data available yet.</p>';
                     
                     if (confirm) alert('All data cleared!');
                 } catch (error) {
