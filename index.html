@@ -1128,7 +1128,18 @@
                             <input type="text" id="myPeerId" readonly style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #ddd; background: #f8f9fa; font-family: monospace; font-size: 14px; min-height: 45px; box-sizing: border-box; margin-bottom: 10px;">
                             <button class="btn btn-secondary" onclick="copyPeerId()" style="width: 100%; padding: 12px; font-size: 14px;">Copy Peer ID</button>
                         </div>
-                        <div id="peerStatus" style="font-size: 14px; color: #666; margin-bottom: 10px;">Ready to connect</div>
+                        <div id="peerStatus" style="font-size: 14px; color: #666; margin-bottom: 15px;">Ready to connect</div>
+                        
+                        <!-- Collapsible P2P Logs -->
+                        <div style="margin-bottom: 10px;">
+                            <button onclick="toggleP2PLogs()" id="logToggleBtn" style="background: none; border: 1px solid #ddd; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666; width: 100%;">
+                                📋 Show Connection Logs
+                            </button>
+                        </div>
+                        <div id="p2pLogContainer" style="display: none; margin-bottom: 15px; padding: 10px; background: white; border-radius: 6px; border: 1px solid #ddd;">
+                            <div id="p2pLog" style="max-height: 120px; overflow-y: auto; font-size: 12px; color: #666; line-height: 1.4;"></div>
+                            <button onclick="clearP2PLogs()" style="margin-top: 8px; background: #f8f9fa; border: 1px solid #ddd; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #666;">Clear Logs</button>
+                        </div>
                     </div>
                     
                     <div style="margin-bottom: 20px;">
@@ -1146,7 +1157,6 @@
                         <button class="btn btn-success" onclick="sendDataP2P()">Send My Data</button>
                         <button class="btn btn-secondary" onclick="disconnectP2P()">Disconnect</button>
                     </div>
-                    <div id="p2pLog" style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px; font-size: 12px; color: #666; max-height: 100px; overflow-y: auto;"></div>
                 </div>
             </div>
             
@@ -2836,6 +2846,25 @@
             const timestamp = new Date().toLocaleTimeString();
             log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
             log.scrollTop = log.scrollHeight;
+        }
+
+        function toggleP2PLogs() {
+            const container = document.getElementById('p2pLogContainer');
+            const button = document.getElementById('logToggleBtn');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                button.innerHTML = '📋 Hide Connection Logs';
+            } else {
+                container.style.display = 'none';
+                button.innerHTML = '📋 Show Connection Logs';
+            }
+        }
+
+        function clearP2PLogs() {
+            const log = document.getElementById('p2pLog');
+            log.innerHTML = '';
+            logP2P('Log cleared');
         }
 
         function attemptReconnectP2P() {
