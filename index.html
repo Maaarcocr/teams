@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Rating App</title>
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1103,6 +1104,52 @@
                 <input type="file" id="importFile" accept=".json" onchange="importData()">
                 <button class="btn btn-secondary" onclick="exportData()">Export Data</button>
             </div>
+            
+            <hr style="margin: 20px 0; border: 1px solid #ddd;">
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #333;">P2P Data Sharing</h3>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Share data directly with another user via peer-to-peer connection. No data goes through any servers.</p>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="customPeerId" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 16px;">Your Peer ID (optional):</label>
+                    <input type="text" id="customPeerId" placeholder="Leave empty for auto-generated ID" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-family: monospace; font-size: 14px; min-height: 45px; box-sizing: border-box;">
+                    <div style="font-size: 14px; color: #666; margin-top: 5px;">Enter a custom ID or leave empty for auto-generation</div>
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="initializeP2P()" id="initP2PBtn" style="font-size: 16px; padding: 12px 24px;">Start P2P Connection</button>
+                </div>
+                
+                <div id="p2pInterface" style="display: none;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 16px;">Your Peer ID:</label>
+                        <div style="margin-bottom: 10px;">
+                            <input type="text" id="myPeerId" readonly style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #ddd; background: #f8f9fa; font-family: monospace; font-size: 14px; min-height: 45px; box-sizing: border-box; margin-bottom: 10px;">
+                            <button class="btn btn-secondary" onclick="copyPeerId()" style="width: 100%; padding: 12px; font-size: 14px;">Copy Peer ID</button>
+                        </div>
+                        <div id="peerStatus" style="font-size: 14px; color: #666; margin-bottom: 10px;">Ready to connect</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="remotePeerId" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 16px;">Remote Peer ID:</label>
+                        <div style="margin-bottom: 10px;">
+                            <input type="text" id="remotePeerId" placeholder="Enter peer ID to connect" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-family: monospace; font-size: 14px; min-height: 45px; box-sizing: border-box;">
+                        </div>
+                        <button class="btn btn-primary" onclick="connectToPeer()" id="connectBtn" style="width: 100%; padding: 12px; font-size: 16px;">Connect</button>
+                    </div>
+                </div>
+                
+                <div id="p2pActions" style="display: none; margin-top: 15px; padding: 15px; background: #e8f5e8; border-radius: 8px; border: 2px solid #28a745;">
+                    <h4 style="margin-bottom: 10px; color: #333;">Connected!</h4>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="sendDataP2P()">Send My Data</button>
+                        <button class="btn btn-secondary" onclick="disconnectP2P()">Disconnect</button>
+                    </div>
+                    <div id="p2pLog" style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px; font-size: 12px; color: #666; max-height: 100px; overflow-y: auto;"></div>
+                </div>
+            </div>
+            
             <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
         </div>
     </div>
@@ -2578,6 +2625,189 @@
                 console.error('Failed to record custom match:', error);
                 alert('Failed to record custom match result');
             }
+        }
+
+        // P2P Data Sharing functionality
+        let peer = null;
+        let currentConnection = null;
+
+        function initializeP2P() {
+            const customId = document.getElementById('customPeerId').value.trim();
+            const initBtn = document.getElementById('initP2PBtn');
+            
+            initBtn.textContent = 'Initializing...';
+            initBtn.disabled = true;
+            
+            // Create peer with custom ID if provided, otherwise auto-generate
+            peer = customId ? new Peer(customId) : new Peer();
+            
+            peer.on('open', function(id) {
+                document.getElementById('myPeerId').value = id;
+                document.getElementById('peerStatus').textContent = 'Ready to connect';
+                document.getElementById('peerStatus').style.color = '#28a745';
+                document.getElementById('p2pInterface').style.display = 'block';
+                initBtn.style.display = 'none';
+                logP2P(`Your Peer ID: ${id}`);
+                logP2P('P2P initialized successfully');
+            });
+            
+            peer.on('error', function(err) {
+                console.error('Peer error:', err);
+                document.getElementById('peerStatus').textContent = 'Connection error';
+                document.getElementById('peerStatus').style.color = '#dc3545';
+                initBtn.textContent = 'Retry P2P Connection';
+                initBtn.disabled = false;
+                logP2P(`Error: ${err.message}`);
+                
+                if (err.type === 'unavailable-id') {
+                    alert('This Peer ID is already taken. Please choose a different one or leave empty for auto-generation.');
+                    document.getElementById('customPeerId').focus();
+                }
+            });
+            
+            peer.on('connection', function(conn) {
+                currentConnection = conn;
+                handleConnection(conn);
+            });
+        }
+
+        function connectToPeer() {
+            const remotePeerId = document.getElementById('remotePeerId').value.trim();
+            if (!remotePeerId) {
+                alert('Please enter a remote peer ID');
+                return;
+            }
+            
+            if (!peer) {
+                alert('Peer not initialized. Please wait and try again.');
+                return;
+            }
+            
+            logP2P(`Connecting to ${remotePeerId}...`);
+            currentConnection = peer.connect(remotePeerId);
+            handleConnection(currentConnection);
+        }
+
+        function handleConnection(conn) {
+            conn.on('open', function() {
+                document.getElementById('p2pActions').style.display = 'block';
+                document.getElementById('connectBtn').textContent = 'Connected';
+                document.getElementById('connectBtn').disabled = true;
+                logP2P('Connected! You can now send/receive data.');
+            });
+            
+            conn.on('data', function(data) {
+                logP2P('Received data from peer');
+                if (confirm('Received data from peer. Do you want to import it? This will replace your current data.')) {
+                    importP2PData(data);
+                } else {
+                    logP2P('Data import cancelled by user');
+                }
+            });
+            
+            conn.on('close', function() {
+                disconnectP2P();
+                logP2P('Connection closed');
+            });
+            
+            conn.on('error', function(err) {
+                console.error('Connection error:', err);
+                logP2P(`Connection error: ${err.message}`);
+            });
+        }
+
+        async function sendDataP2P() {
+            if (!currentConnection || !currentConnection.open) {
+                alert('No active connection. Please connect to a peer first.');
+                return;
+            }
+            
+            try {
+                logP2P('Preparing data to send...');
+                const allPlayers = await getAllPlayers();
+                const allMatches = await getAllMatches();
+                const data = {
+                    players: allPlayers,
+                    matches: allMatches,
+                    exportDate: new Date().toISOString(),
+                    source: 'p2p'
+                };
+                
+                currentConnection.send(data);
+                logP2P(`Data sent successfully! (${allPlayers.length} players, ${allMatches.length} matches)`);
+            } catch (error) {
+                console.error('Failed to send data:', error);
+                logP2P(`Failed to send data: ${error.message}`);
+                alert('Failed to send data!');
+            }
+        }
+
+        async function importP2PData(data) {
+            try {
+                if (data.players && Array.isArray(data.players)) {
+                    logP2P('Importing received data...');
+                    
+                    // Clear existing data first
+                    await clearAllData(false);
+                    
+                    // Import players
+                    for (const player of data.players) {
+                        await savePlayer(player);
+                    }
+                    
+                    // Import matches if they exist
+                    if (data.matches && Array.isArray(data.matches)) {
+                        for (const match of data.matches) {
+                            await saveMatch(match);
+                        }
+                    }
+                    
+                    players = await getAllPlayers();
+                    displayPlayers();
+                    logP2P(`Import successful! (${data.players.length} players, ${data.matches?.length || 0} matches)`);
+                    alert('P2P data imported successfully!');
+                } else {
+                    logP2P('Invalid data format received');
+                    alert('Invalid data format received from peer!');
+                }
+            } catch (error) {
+                console.error('Import failed:', error);
+                logP2P(`Import failed: ${error.message}`);
+                alert('Error importing P2P data!');
+            }
+        }
+
+        function disconnectP2P() {
+            if (currentConnection) {
+                currentConnection.close();
+                currentConnection = null;
+            }
+            
+            document.getElementById('p2pActions').style.display = 'none';
+            document.getElementById('connectBtn').textContent = 'Connect';
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('remotePeerId').value = '';
+            logP2P('Disconnected');
+        }
+
+        function copyPeerId() {
+            const peerIdInput = document.getElementById('myPeerId');
+            peerIdInput.select();
+            document.execCommand('copy');
+            
+            // Visual feedback
+            const originalText = peerIdInput.nextElementSibling.textContent;
+            peerIdInput.nextElementSibling.textContent = 'Copied!';
+            setTimeout(() => {
+                peerIdInput.nextElementSibling.textContent = originalText;
+            }, 1000);
+        }
+
+        function logP2P(message) {
+            const log = document.getElementById('p2pLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
         }
 
         // Initialize custom match display when page loads
