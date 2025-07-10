@@ -4,8 +4,11 @@
 This is a single-page web application for rating beach volleyball players and generating balanced teams. The app allows users to manage player profiles with custom ratings, photos, and detailed statistics tracking.
 
 ## App Structure
-- **Single HTML file**: `index.html` - Contains all HTML, CSS, and JavaScript
-- **No external dependencies**: Pure vanilla JavaScript with modern web APIs
+- **Three separate files**: 
+  - `index.html` - HTML structure and layout
+  - `script.js` - All JavaScript application logic
+  - `style.css` - CSS styling and responsive design
+- **External dependency**: PeerJS CDN for P2P functionality
 - **Responsive design**: Works on both desktop and mobile devices
 
 ## Core Features
@@ -54,6 +57,7 @@ Players are rated on 5 beach volleyball skills (1-100 scale):
 - **Photo Storage**: Efficient image storage using IndexedDB
 - **Import/Export**: JSON-based data backup and restore
 - **Growth Tracking**: Historical player development records
+- **P2P Data Sharing**: Real-time peer-to-peer data sharing between users
 
 ## Technical Implementation
 
@@ -105,6 +109,7 @@ Players are rated on 5 beach volleyball skills (1-100 scale):
 - **Form Validation**: Required fields and number constraints
 - **Match Recording**: Interface for recording team results
 - **Statistics Display**: Leaderboard with filtering and sorting
+- **P2P Interface**: Real-time connection management and data sharing
 
 ## Common Operations
 
@@ -141,22 +146,52 @@ Players are rated on 5 beach volleyball skills (1-100 scale):
 3. Sort by: Win Rate, Total Wins, Total Games
 4. View leaderboard with detailed stats for each player
 
+### P2P Data Sharing
+1. Navigate to "Data" tab
+2. Enter a custom Peer ID (optional) or leave empty for auto-generation
+3. Click "Start P2P Connection" to initialize WebRTC peer
+4. Share your generated Peer ID with another user
+5. Enter their Peer ID and click "Connect"
+6. Once connected, click "Send My Data" to share your complete database
+7. Incoming data will prompt for confirmation before import
+8. Connection logs are available for troubleshooting
+
 ## File Organization
-Since this is a single-file application:
-- **Lines 1-937**: CSS styling and responsive design
-- **Lines 938-1043**: HTML structure and forms
-- **Lines 1044-1155**: Modal HTML templates
-- **Lines 1156-2200+**: JavaScript application logic
+The application is split across three files:
+
+### `index.html`
+- HTML structure and layout
+- Modal templates for player editing, FIFA cards, and growth tracking
+- Form elements for player input and team generation
+- Tab navigation structure
+- Links to external PeerJS CDN and local CSS/JS files
+
+### `style.css`
+- CSS styling and responsive design
+- FIFA card styling with dynamic colors
+- Modal and form styling
+- Tab navigation and button styling
+- Mobile-responsive layout
+
+### `script.js`
+- Complete JavaScript application logic including:
   - Database functions (IndexedDB operations)
   - Match recording and statistics calculation
   - UI display and interaction handlers
+  - P2P connection management and data synchronization
+  - Player management (add, edit, delete, availability)
+  - Team generation algorithms
+  - Growth tracking and statistics
 
 ## Development Notes
-- No build process or external dependencies required
+- No build process required - standard HTML/CSS/JS files
+- Single external dependency: PeerJS CDN for WebRTC functionality
 - All functionality is client-side
 - Data persists locally in browser
 - Images are stored as blobs in IndexedDB for efficiency
 - Mobile-responsive design with touch-friendly controls
+- P2P connections use WebRTC with PeerJS CDN for signaling
+- Auto-reconnection handles network interruptions and app visibility changes
 
 ## Maintenance Instructions
 **IMPORTANT**: When making any fundamental changes to the app (new features, architecture changes, data structure modifications, etc.), update this CLAUDE.md file to reflect the changes. This ensures the documentation stays current and helpful for future development work.
@@ -169,3 +204,59 @@ This app is designed for beach volleyball communities to:
 - Record match results and track win/loss statistics
 - View player performance analytics with time-based filtering
 - Export/import data for backup or sharing between devices
+- Share data instantly between users via direct P2P connections
+
+## P2P Data Sharing Technical Details
+
+### Overview
+The app includes peer-to-peer (P2P) data sharing functionality that allows users to directly share their complete player database with other users without requiring a central server.
+
+### Technology Stack
+- **WebRTC**: For establishing direct peer-to-peer connections
+- **PeerJS**: JavaScript library that simplifies WebRTC implementation
+- **PeerJS Cloud**: Free signaling server for connection establishment
+
+### Key Features
+- **Direct Connection**: Data is transmitted directly between browsers
+- **Privacy**: No data passes through intermediate servers
+- **Custom Peer IDs**: Users can set custom identifiers for easy connection
+- **Auto-reconnection**: Automatically attempts to reconnect after network interruptions
+- **Connection Logging**: Real-time logs for troubleshooting connections
+- **Data Validation**: Incoming data is validated before import
+- **User Confirmation**: Prompts user before replacing existing data
+
+### Security & Privacy
+- Connections are established using WebRTC's built-in encryption
+- Only the signaling process uses external servers (PeerJS Cloud)
+- Actual data transfer is peer-to-peer without intermediaries
+- Users have full control over data sharing and receiving
+
+### Connection Process
+1. **Initialization**: Creates a WebRTC peer with optional custom ID
+2. **Signaling**: Uses PeerJS Cloud servers to find and connect peers
+3. **Direct Connection**: Establishes encrypted peer-to-peer channel
+4. **Data Transfer**: Sends complete database (players, matches, photos)
+5. **Import Process**: Receiver can accept or reject incoming data
+
+### Auto-reconnection Features
+- Monitors signaling server connection status
+- Automatically attempts reconnection when app becomes active
+- Handles page visibility changes (tab switching, app backgrounding)
+- Provides status updates and error reporting
+- Includes timeout mechanisms for failed reconnection attempts
+
+### Data Format
+P2P transfers include the complete application state:
+```javascript
+{
+  players: [/* all player objects */],
+  matches: [/* all match records */],
+  exportDate: "ISO timestamp",
+  source: "p2p"
+}
+```
+
+### Implementation Location
+- P2P functionality: `script.js` (P2P connection management and data synchronization)
+- UI components: `index.html` (P2P interface in Data tab)
+- Connection management: Auto-reconnection, logging, status tracking in `script.js`
