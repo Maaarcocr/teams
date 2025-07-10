@@ -2630,6 +2630,8 @@
         // P2P Data Sharing functionality
         let peer = null;
         let currentConnection = null;
+        let isDisconnectedFromServer = false;
+        let shouldAutoReconnect = false;
 
         function initializeP2P() {
             const customId = document.getElementById('customPeerId').value.trim();
@@ -2647,8 +2649,16 @@
                 document.getElementById('peerStatus').style.color = '#28a745';
                 document.getElementById('p2pInterface').style.display = 'block';
                 initBtn.style.display = 'none';
-                logP2P(`Your Peer ID: ${id}`);
-                logP2P('P2P initialized successfully');
+                
+                if (isDisconnectedFromServer) {
+                    logP2P('Successfully reconnected to signaling server!');
+                } else {
+                    logP2P(`Your Peer ID: ${id}`);
+                    logP2P('P2P initialized successfully');
+                }
+                
+                isDisconnectedFromServer = false;
+                shouldAutoReconnect = true;
             });
             
             peer.on('error', function(err) {
@@ -2658,7 +2668,7 @@
                 initBtn.textContent = 'Retry P2P Connection';
                 initBtn.disabled = false;
                 logP2P(`Error: ${err.message}`);
-                
+
                 if (err.type === 'unavailable-id') {
                     alert('This Peer ID is already taken. Please choose a different one or leave empty for auto-generation.');
                     document.getElementById('customPeerId').focus();
@@ -2668,6 +2678,16 @@
             peer.on('connection', function(conn) {
                 currentConnection = conn;
                 handleConnection(conn);
+            });
+            
+            peer.on('disconnected', function() {
+                isDisconnectedFromServer = true;
+                document.getElementById('peerStatus').textContent = 'Disconnected from server';
+                document.getElementById('peerStatus').style.color = '#dc3545';
+                logP2P('Disconnected from signaling server (will auto-reconnect when app becomes active)');
+                if (shouldAutoReconnect) {
+                    attemptReconnectP2P();
+                }
             });
         }
 
@@ -2778,16 +2798,24 @@
         }
 
         function disconnectP2P() {
+            shouldAutoReconnect = false;
+            
             if (currentConnection) {
                 currentConnection.close();
                 currentConnection = null;
+            }
+            
+            if (peer) {
+                peer.disconnect();
             }
             
             document.getElementById('p2pActions').style.display = 'none';
             document.getElementById('connectBtn').textContent = 'Connect';
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('remotePeerId').value = '';
-            logP2P('Disconnected');
+            document.getElementById('peerStatus').textContent = 'Manually disconnected';
+            document.getElementById('peerStatus').style.color = '#6c757d';
+            logP2P('Manually disconnected - auto-reconnect disabled');
         }
 
         function copyPeerId() {
@@ -2810,6 +2838,41 @@
             log.scrollTop = log.scrollHeight;
         }
 
+        function attemptReconnectP2P() {
+            if (!peer || !isDisconnectedFromServer || !shouldAutoReconnect || document.hidden) {
+                return;
+            }
+            
+            logP2P('Attempting to reconnect to signaling server...');
+            document.getElementById('peerStatus').textContent = 'Reconnecting...';
+            document.getElementById('peerStatus').style.color = '#ffc107';
+            
+            try {
+                peer.reconnect();
+                
+                // Set up a timeout in case reconnection fails
+                setTimeout(() => {
+                    if (isDisconnectedFromServer && shouldAutoReconnect) {
+                        logP2P('Reconnection timeout - will try again next time app becomes active');
+                        document.getElementById('peerStatus').textContent = 'Reconnection failed';
+                        document.getElementById('peerStatus').style.color = '#dc3545';
+                    }
+                }, 10000); // 10 second timeout
+                
+            } catch (error) {
+                logP2P(`Reconnection failed: ${error.message}`);
+                document.getElementById('peerStatus').textContent = 'Reconnection failed';
+                document.getElementById('peerStatus').style.color = '#dc3545';
+            }
+        }
+
+        // Handle page visibility changes (when user switches back to app)
+        function handleVisibilityChange() {
+            logP2P('App became active - checking connection status');
+            // Small delay to ensure the browser has fully restored the app
+            setTimeout(attemptReconnectP2P, 1000);
+        }
+
         // Initialize custom match display when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Add event listener to tab button to refresh custom players when Teams tab is clicked
@@ -2824,6 +2887,9 @@
                     }, 100);
                 });
             }
+            
+            // Add Page Visibility API listener for auto-reconnection
+            document.addEventListener('visibilitychange', handleVisibilityChange);
         });
     </script>
 </body>
