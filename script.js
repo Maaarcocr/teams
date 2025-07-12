@@ -142,6 +142,9 @@ async function getMatchesByTimeFilter(timeFilter) {
         filterDate.setDate(now.getDate() - 7);
     } else if (timeFilter === 'month') {
         filterDate.setMonth(now.getMonth() - 1);
+    } else if (timeFilter === 'today') {
+        // Set to start of today (00:00:00)
+        filterDate.setHours(0, 0, 0, 0);
     }
 
     return allMatches.filter(match => new Date(match.date) >= filterDate);
@@ -322,6 +325,18 @@ async function init() {
         await migrateToNewColorSystem();
         players = await getAllPlayers();
         displayPlayers();
+        
+        // Reset statistics filter dropdowns to match initial values
+        const timeFilterDropdown = document.getElementById('timeFilter');
+        if (timeFilterDropdown) {
+            timeFilterDropdown.value = 'all';
+        }
+        
+        const sortByDropdown = document.getElementById('sortBy');
+        if (sortByDropdown) {
+            sortByDropdown.value = 'winRate';
+        }
+        
         console.log('Database initialized successfully');
     } catch (error) {
         console.error('Failed to initialize database:', error);
@@ -943,9 +958,6 @@ async function recordMatch() {
         document.getElementById('winningTeam').value = '';
         document.getElementById('losingTeam').value = '';
         document.getElementById('matchNotes').value = '';
-
-        // Hide the match result section
-        document.getElementById('matchResultSection').style.display = 'none';
 
     } catch (error) {
         console.error('Failed to record match:', error);
