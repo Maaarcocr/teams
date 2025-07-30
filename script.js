@@ -147,18 +147,23 @@ async function getMatchesByTimeFilter(timeFilter) {
     if (timeFilter === 'all') return allMatches;
 
     const now = new Date();
-    const filterDate = new Date();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    if (timeFilter === 'week') {
-        filterDate.setDate(now.getDate() - 7);
+    if (timeFilter === 'today') {
+        return allMatches.filter(match => match.date === today);
+    } else if (timeFilter === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(now.getDate() - 7);
+        const weekAgoString = weekAgo.toISOString().split('T')[0];
+        return allMatches.filter(match => match.date >= weekAgoString);
     } else if (timeFilter === 'month') {
-        filterDate.setMonth(now.getMonth() - 1);
-    } else if (timeFilter === 'today') {
-        // Set to start of today (00:00:00)
-        filterDate.setHours(0, 0, 0, 0);
+        const monthAgo = new Date();
+        monthAgo.setMonth(now.getMonth() - 1);
+        const monthAgoString = monthAgo.toISOString().split('T')[0];
+        return allMatches.filter(match => match.date >= monthAgoString);
     }
 
-    return allMatches.filter(match => new Date(match.date) >= filterDate);
+    return allMatches;
 }
 
 // Statistics calculation functions
@@ -1463,7 +1468,24 @@ function initializeP2P() {
     initBtn.textContent = 'Initializing...';
     initBtn.disabled = true;
 
-    peer = customId ? new Peer(customId) : new Peer();
+    const peerConfig  = {
+        config: {
+            iceServers: [
+                {
+                    urls: "stun:138.199.230.145:3478",
+                    username: "turnuser",
+                    password: "TurnPass2024!"
+                },
+                {
+                    urls: "turn:138.199.230.145:3478",
+                    username: "turnuser",
+                    password: "TurnPass2024!"
+                }
+            ]
+        }
+    };
+    
+    peer = customId ? new Peer(customId, peerConfig) : new Peer(peerConfig);
 
     peer.on('open', function (id) {
         document.getElementById('myPeerId').value = id;
