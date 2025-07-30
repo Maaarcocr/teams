@@ -173,13 +173,28 @@
         <div id="match-history" class="tab-content">
             <div style="margin-bottom: 20px;">
                 <h3 style="margin-bottom: 15px; color: #333;">Match History</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <input type="text" id="matchSearchInput" placeholder="Search matches..." style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">
-                    <select id="matchSortBy" onchange="displayMatchHistory()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="date-desc">Newest First</option>
-                        <option value="date-asc">Oldest First</option>
-                    </select>
-                    <button class="btn btn-secondary" onclick="displayMatchHistory()">Refresh</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label for="matchTimeFilter" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Time Period:</label>
+                        <select id="matchTimeFilter" onchange="displayMatchHistory()" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #667eea; font-size: 16px; background: white;">
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="matchSortBy" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Sort By:</label>
+                        <select id="matchSortBy" onchange="displayMatchHistory()" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #667eea; font-size: 16px; background: white;">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="matchSearchInput" placeholder="Search matches..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
                 </div>
             </div>
             

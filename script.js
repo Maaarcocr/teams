@@ -1720,10 +1720,12 @@ let currentEditingMatch = null;
 async function displayMatchHistory() {
     const searchInput = document.getElementById('matchSearchInput');
     const sortSelect = document.getElementById('matchSortBy');
+    const timeFilterSelect = document.getElementById('matchTimeFilter');
     const contentDiv = document.getElementById('matchHistoryContent');
     
     try {
-        let matches = await getAllMatches();
+        const timeFilter = timeFilterSelect ? timeFilterSelect.value : 'today';
+        let matches = await getMatchesByTimeFilter(timeFilter);
         const searchTerm = searchInput.value.toLowerCase().trim();
         
         // Filter by search term if provided
@@ -1761,10 +1763,21 @@ async function displayMatchHistory() {
         });
         
         if (matches.length === 0) {
+            const timeFilterText = {
+                'today': 'today',
+                'week': 'this week',
+                'month': 'this month',
+                'all': 'in total'
+            };
+            
+            const emptyMessage = searchTerm ? 
+                'Try adjusting your search term or time filter.' : 
+                `No matches found ${timeFilterText[timeFilter] || 'for the selected period'}. ${timeFilter === 'today' ? 'Play some matches today to see them here!' : 'Try selecting a different time period.'}`;
+            
             contentDiv.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #666;">
                     <h4>No matches found</h4>
-                    <p>${searchTerm ? 'Try adjusting your search term.' : 'Start playing matches to see them here!'}</p>
+                    <p>${emptyMessage}</p>
                 </div>
             `;
             return;
