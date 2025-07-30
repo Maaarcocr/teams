@@ -131,6 +131,17 @@ async function getAllMatches() {
     });
 }
 
+async function deleteMatch(matchId) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['matches'], 'readwrite');
+        const store = transaction.objectStore('matches');
+        const request = store.delete(matchId);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
 async function getMatchesByTimeFilter(timeFilter) {
     const allMatches = await getAllMatches();
     if (timeFilter === 'all') return allMatches;
@@ -520,6 +531,8 @@ function showTab(tabName) {
         displayPlayers();
     } else if (tabName === 'statistics') {
         displayStatistics();
+    } else if (tabName === 'match-history') {
+        displayMatchHistory();
     }
 }
 
@@ -817,6 +830,61 @@ async function deletePlayerFromDB(playerId) {
     }
 }
 
+// NBA-style weighted draft configuration
+const DRAFT_CONFIG = {
+    MAX_BALLOTS: 20,           // Worst team gets this many ballots
+    MIN_BALLOTS: 8,            // Best team gets this many ballots
+    BALLOT_DECREMENT: 2        // How many fewer ballots per better ranking
+};
+
+// Calculate team averages for weighting
+function calculateTeamAverages(teams) {
+    return teams.map(team => {
+        if (team.length === 0) return 0;
+        const sum = team.reduce((acc, player) => acc + parseFloat(player.average), 0);
+        return sum / team.length;
+    });
+}
+
+// Calculate ballot weights based on team averages
+function calculateTeamWeights(teams) {
+    const averages = calculateTeamAverages(teams);
+    
+    // Sort team indices by average (ascending - worst first)
+    const sortedIndices = Array.from({ length: teams.length }, (_, i) => i)
+        .sort((a, b) => averages[a] - averages[b]);
+    
+    // Assign ballots: worst team gets MAX_BALLOTS, best gets MIN_BALLOTS
+    const weights = new Array(teams.length);
+    
+    for (let i = 0; i < sortedIndices.length; i++) {
+        const teamIndex = sortedIndices[i];
+        const ballots = Math.max(
+            DRAFT_CONFIG.MIN_BALLOTS,
+            DRAFT_CONFIG.MAX_BALLOTS - (i * DRAFT_CONFIG.BALLOT_DECREMENT)
+        );
+        weights[teamIndex] = ballots;
+    }
+    
+    return weights;
+}
+
+// Weighted random team selection
+function selectWeightedTeam(weights) {
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (let i = 0; i < weights.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+            return i;
+        }
+    }
+    
+    // Fallback to last team
+    return weights.length - 1;
+}
+
 function generateTeams() {
     const numTeams = parseInt(document.getElementById('numTeams').value);
 
@@ -834,25 +902,36 @@ function generateTeams() {
     // Initialize teams
     const teams = Array.from({ length: numTeams }, () => []);
 
-    // Snake draft with randomized team order per round
+    // NBA-style weighted draft
     const rounds = Math.ceil(sortedPlayers.length / numTeams);
     let playerIndex = 0;
 
     for (let round = 0; round < rounds; round++) {
-        // Create randomized team order for this round
-        const teamOrder = Array.from({ length: numTeams }, (_, i) => i);
-
-        // Shuffle the team order for this round
-        for (let i = teamOrder.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [teamOrder[i], teamOrder[j]] = [teamOrder[j], teamOrder[i]];
-        }
-
-        // Assign players in this round using the randomized order
+        // Calculate current team weights based on averages
+        const teamWeights = calculateTeamWeights(teams);
+        
+        // Create array of teams that still need players this round
+        const availableTeams = Array.from({ length: numTeams }, (_, i) => i);
+        
+        // Assign players in this round using weighted selection
         for (let i = 0; i < numTeams && playerIndex < sortedPlayers.length; i++) {
-            const teamIndex = teamOrder[i];
-            teams[teamIndex].push(sortedPlayers[playerIndex]);
+            // Filter weights for only available teams
+            const currentWeights = teamWeights.map((weight, index) => 
+                availableTeams.includes(index) ? weight : 0
+            );
+            
+            // Select team using weighted random selection
+            const selectedTeam = selectWeightedTeam(currentWeights);
+            
+            // Add player to selected team
+            teams[selectedTeam].push(sortedPlayers[playerIndex]);
             playerIndex++;
+            
+            // Remove team from available teams for this round
+            const teamIndex = availableTeams.indexOf(selectedTeam);
+            if (teamIndex > -1) {
+                availableTeams.splice(teamIndex, 1);
+            }
         }
     }
 
@@ -1384,7 +1463,6 @@ function initializeP2P() {
     initBtn.textContent = 'Initializing...';
     initBtn.disabled = true;
 
-    // Create peer with custom ID if provided, otherwise auto-generate
     peer = customId ? new Peer(customId) : new Peer();
 
     peer.on('open', function (id) {
@@ -1635,6 +1713,280 @@ function handleVisibilityChange() {
     // Small delay to ensure the browser has fully restored the app
     setTimeout(attemptReconnectP2P, 1000);
 }
+
+// Match History Functions
+let currentEditingMatch = null;
+
+async function displayMatchHistory() {
+    const searchInput = document.getElementById('matchSearchInput');
+    const sortSelect = document.getElementById('matchSortBy');
+    const contentDiv = document.getElementById('matchHistoryContent');
+    
+    try {
+        let matches = await getAllMatches();
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        // Filter by search term if provided
+        if (searchTerm) {
+            const allPlayers = await getAllPlayers();
+            const playerNameMap = {};
+            allPlayers.forEach(player => {
+                playerNameMap[player.id] = player.name.toLowerCase();
+            });
+            
+            matches = matches.filter(match => {
+                // Search in match date, notes, and player names
+                const matchDate = new Date(match.date).toLocaleDateString().toLowerCase();
+                const notes = (match.notes || '').toLowerCase();
+                
+                const playerNames = match.teams.flatMap(team => 
+                    team.players.map(playerId => playerNameMap[playerId] || '')
+                ).join(' ');
+                
+                return matchDate.includes(searchTerm) || 
+                       notes.includes(searchTerm) || 
+                       playerNames.includes(searchTerm);
+            });
+        }
+        
+        // Sort matches
+        const sortBy = sortSelect.value;
+        matches.sort((a, b) => {
+            if (sortBy === 'date-desc') {
+                return new Date(b.date) - new Date(a.date);
+            } else if (sortBy === 'date-asc') {
+                return new Date(a.date) - new Date(b.date);
+            }
+            return 0;
+        });
+        
+        if (matches.length === 0) {
+            contentDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h4>No matches found</h4>
+                    <p>${searchTerm ? 'Try adjusting your search term.' : 'Start playing matches to see them here!'}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const allPlayers = await getAllPlayers();
+        const playerMap = {};
+        allPlayers.forEach(player => {
+            playerMap[player.id] = player;
+        });
+        
+        const matchCards = await Promise.all(matches.map(match => createMatchCard(match, playerMap)));
+        contentDiv.innerHTML = matchCards.join('');
+        
+    } catch (error) {
+        console.error('Error displaying match history:', error);
+        contentDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+                <h4>Error loading match history</h4>
+                <p>Please try refreshing the page.</p>
+            </div>
+        `;
+    }
+}
+
+async function createMatchCard(match, playerMap) {
+    const matchDate = new Date(match.date).toLocaleDateString();
+    const winningTeam = match.teams.find(team => team.result === 'win');
+    const losingTeam = match.teams.find(team => team.result === 'loss');
+    
+    const createTeamHtml = (team, isWinner) => {
+        const players = team.players.map(playerId => playerMap[playerId]?.name || 'Unknown Player');
+        const resultClass = isWinner ? 'winner' : 'loser';
+        const resultBadge = isWinner ? 
+            `<span class="match-result-badge win">WIN</span>` : 
+            `<span class="match-result-badge loss">LOSS</span>`;
+        
+        return `
+            <div class="match-team ${resultClass}">
+                <div class="match-team-label">
+                    Team ${isWinner ? '(Winner)' : '(Loser)'}
+                    ${resultBadge}
+                </div>
+                <div class="match-team-players">${players.join(', ')}</div>
+                <div class="match-team-average">Avg: ${team.average}</div>
+            </div>
+        `;
+    };
+    
+    const notesHtml = match.notes ? 
+        `<div class="match-notes">"${match.notes}"</div>` : '';
+    
+    return `
+        <div class="match-card">
+            <div class="match-header">
+                <div class="match-date">${matchDate}</div>
+                <div class="match-actions">
+                    <button class="match-edit-btn" onclick="openEditMatchModal('${match.id}')">Edit</button>
+                </div>
+            </div>
+            <div class="match-teams">
+                ${createTeamHtml(winningTeam || match.teams[0], !!winningTeam && match.teams[0] === winningTeam)}
+                <div class="match-vs">VS</div>
+                ${createTeamHtml(losingTeam || match.teams[1], !!winningTeam && match.teams[1] === winningTeam)}
+            </div>
+            ${notesHtml}
+        </div>
+    `;
+}
+
+async function openEditMatchModal(matchId) {
+    try {
+        const matches = await getAllMatches();
+        const match = matches.find(m => m.id == matchId);
+        
+        if (!match) {
+            alert('Match not found');
+            return;
+        }
+        
+        currentEditingMatch = match;
+        
+        const allPlayers = await getAllPlayers();
+        const playerMap = {};
+        allPlayers.forEach(player => {
+            playerMap[player.id] = player;
+        });
+        
+        // Populate modal fields
+        document.getElementById('editMatchDate').value = match.date;
+        document.getElementById('editMatchNotes').value = match.notes || '';
+        
+        // Create team editing interface
+        const teamsContainer = document.getElementById('editMatchTeams');
+        teamsContainer.innerHTML = '';
+        
+        match.teams.forEach((team, index) => {
+            const players = team.players.map(playerId => playerMap[playerId]?.name || 'Unknown Player');
+            const teamDiv = document.createElement('div');
+            teamDiv.className = 'edit-match-team';
+            teamDiv.innerHTML = `
+                <div class="edit-match-team-header">
+                    <span class="edit-match-team-title">Team ${index + 1}</span>
+                    <select class="edit-match-result-select" data-team-index="${index}">
+                        <option value="win" ${team.result === 'win' ? 'selected' : ''}>Winner</option>
+                        <option value="loss" ${team.result === 'loss' ? 'selected' : ''}>Loser</option>
+                    </select>
+                </div>
+                <div class="edit-match-players">
+                    Players: ${players.join(', ')}
+                    <br>Average: ${team.average}
+                </div>
+            `;
+            teamsContainer.appendChild(teamDiv);
+        });
+        
+        // Show modal
+        document.getElementById('editMatchModal').style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error opening edit match modal:', error);
+        alert('Error opening edit dialog');
+    }
+}
+
+function closeEditMatchModal() {
+    document.getElementById('editMatchModal').style.display = 'none';
+    currentEditingMatch = null;
+}
+
+async function saveMatchChanges() {
+    if (!currentEditingMatch) return;
+    
+    try {
+        // Get updated values
+        const newDate = document.getElementById('editMatchDate').value;
+        const newNotes = document.getElementById('editMatchNotes').value;
+        
+        // Get team results from selects
+        const resultSelects = document.querySelectorAll('.edit-match-result-select');
+        const updatedTeams = currentEditingMatch.teams.map((team, index) => {
+            const select = resultSelects[index];
+            return {
+                ...team,
+                result: select.value
+            };
+        });
+        
+        // Validate that exactly one team is winner and one is loser
+        const winners = updatedTeams.filter(team => team.result === 'win');
+        const losers = updatedTeams.filter(team => team.result === 'loss');
+        
+        if (winners.length !== 1 || losers.length !== 1) {
+            alert('Each match must have exactly one winning team and one losing team.');
+            return;
+        }
+        
+        // Update match
+        const updatedMatch = {
+            ...currentEditingMatch,
+            date: newDate,
+            notes: newNotes,
+            teams: updatedTeams
+        };
+        
+        await saveMatch(updatedMatch);
+        
+        // Close modal and refresh display
+        closeEditMatchModal();
+        displayMatchHistory();
+        
+        // Also refresh statistics if they're displayed
+        if (document.getElementById('statistics').classList.contains('active')) {
+            displayStatistics();
+        }
+        
+    } catch (error) {
+        console.error('Error saving match changes:', error);
+        alert('Error saving changes');
+    }
+}
+
+async function deleteCurrentMatch() {
+    if (!currentEditingMatch) return;
+    
+    const confirmDelete = confirm(`Are you sure you want to delete this match from ${new Date(currentEditingMatch.date).toLocaleDateString()}? This action cannot be undone.`);
+    
+    if (!confirmDelete) return;
+    
+    try {
+        await deleteMatch(currentEditingMatch.id);
+        
+        // Close modal and refresh display
+        closeEditMatchModal();
+        displayMatchHistory();
+        
+        // Also refresh statistics if they're displayed
+        if (document.getElementById('statistics').classList.contains('active')) {
+            displayStatistics();
+        }
+        
+    } catch (error) {
+        console.error('Error deleting match:', error);
+        alert('Error deleting match');
+    }
+}
+
+// Add search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('matchSearchInput');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (document.getElementById('match-history').classList.contains('active')) {
+                    displayMatchHistory();
+                }
+            }, 300);
+        });
+    }
+});
 
 // Initialize custom match display when page loads
 document.addEventListener('DOMContentLoaded', function () {
